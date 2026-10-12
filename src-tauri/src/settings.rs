@@ -6,15 +6,20 @@ use tauri::Manager;
 /// Provider configuration entered by the user (bring-your-own key).
 /// Stored as a 0600-permission JSON file in the app config directory.
 /// v1 keeps it simple; a OS keyring upgrade can swap this module later.
+///
+/// Field names are camelCase to match the TS `ProviderSettings` interface:
+/// Tauri only converts top-level command argument names, nested struct
+/// fields go through serde as-is. `alias` keeps old snake_case files readable.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Settings {
     /// "openai" (any OpenAI-compatible endpoint) | "anthropic"
     pub provider: String,
     /// Base URL, e.g. "https://api.openai.com/v1". Empty = provider default.
-    #[serde(default)]
+    #[serde(default, alias = "base_url")]
     pub base_url: String,
     pub model: String,
-    #[serde(default)]
+    #[serde(default, alias = "api_key")]
     pub api_key: String,
 }
 

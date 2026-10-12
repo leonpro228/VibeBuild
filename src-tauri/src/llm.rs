@@ -70,7 +70,9 @@ async fn stream_openai(
 
     let status = response.status();
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {}", trim_body(response).await));
+        // Include the URL: a wrong/unapplied base_url is the #1 suspect when
+        // requests hit the wrong host (region blocks, weird 4xx bodies…).
+        return Err(format!("HTTP {status} от {url}: {}", trim_body(response).await));
     }
 
     consume_sse(response, |payload| {
@@ -119,7 +121,7 @@ async fn stream_anthropic(
 
     let status = response.status();
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {}", trim_body(response).await));
+        return Err(format!("HTTP {status} от {url}: {}", trim_body(response).await));
     }
 
     consume_sse(response, |payload| {
