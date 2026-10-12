@@ -1,17 +1,24 @@
 /**
  * Build-time pipeline: raw Minecraft asset JSONs -> compact runtime catalog + texture atlas.
  *
- * Input  (json assets/): blocks_states.json, texture_content.json
+ * Input  (json assets/): blocks_states.json, blocks_models.json (vanilla 26.1),
+ *                        texture_content.json (flat fallback), blocks/*.png (per-face,
+ *                        fetched by scripts/fetch-textures.mjs)
  * Output (src/assets/):  palette.json, atlas.png
  *
- * v1 simplification: one texture per block (the pack has no separate _top/_side
- * textures), full cubes only. `.` is reserved for air and never assigned.
+ * Per-face pipeline: blockstate -> model -> parent chain gives {up, down, north,
+ * south, east, west} -> texture name; every referenced texture becomes one 16x16
+ * tile in the atlas (animated textures: first frame; grayscale biome textures:
+ * baked tint from TINTS). Blocks whose model chain can't be resolved fall back
+ * to the flat texture_content texture on all faces. `.` stays reserved for air.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 
-import { fileURLToPath } from "node:url";
+import { SYMBOLS, TINTS, TRANSPARENT, WHITELIST } from "./palette-config.mjs";
+import { resolveBlockFaces } from "./model-faces.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const ASSETS_IN = join(ROOT, "json assets");
@@ -20,96 +27,107 @@ const ASSETS_OUT = join(ROOT, "src", "assets");
 const TILE = 16;
 const ATLAS_COLS = 12;
 
-/** '.' is air and is NOT part of this string. */
-const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?#$%&*+-=,_.@";
-
-/**
- * Curated whitelist of full-cube blocks, ordered semantically.
- * Names must match vanilla block ids (and texture_content.json entries).
- */
-const WHITELIST = [
-  // Stones and bricks
-  "stone", "cobblestone", "mossy_cobblestone", "stone_bricks", "mossy_stone_bricks",
-  "chiseled_stone_bricks", "smooth_stone", "granite", "diorite", "andesite",
-  "deepslate", "cobbled_deepslate", "deepslate_bricks", "blackstone",
-  "polished_blackstone_bricks", "bricks", "netherrack", "nether_bricks",
-  "obsidian", "end_stone_bricks", "quartz_block", "quartz_bricks", "dark_prismarine",
-  // Terrain
-  "grass_block", "dirt", "sand", "gravel", "snow_block", "clay", "moss_block", "hay_block",
-  // Wood
-  "oak_planks", "spruce_planks", "birch_planks", "jungle_planks", "acacia_planks",
-  "dark_oak_planks", "crimson_planks", "warped_planks",
-  "oak_log", "spruce_log", "birch_log", "dark_oak_log",
-  // Decor / light
-  "glass", "glowstone", "sea_lantern", "shroomlight",
-  // Wool
-  "white_wool", "light_gray_wool", "gray_wool", "black_wool",
-  "red_wool", "blue_wool", "yellow_wool", "lime_wool",
-  // Concrete
-  "white_concrete", "light_gray_concrete", "gray_concrete", "black_concrete",
-  "red_concrete", "blue_concrete", "yellow_concrete", "lime_concrete",
-  // Metals
-  "iron_block", "gold_block", "diamond_block", "coal_block", "redstone_block", "lapis_block",
-  // Leaves (transparent texture, rendered with alpha test)
-  "oak_leaves", "spruce_leaves", "cherry_leaves",
-  // Misc
-  "terracotta",
-];
-
-const TRANSPARENT = new Set(["glass", "oak_leaves", "spruce_leaves", "cherry_leaves"]);
+function applyTint(data, tint) {
+  const tr = (tint >> 16) & 0xff;
+  const tg = (tint >> 8) & 0xff;
+  const tb = tint & 0xff;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    data[i] = Math.min(255, Math.round((data[i] * tr) / 255));
+    data[i + 1] = Math.min(255, Math.round((data[i + 1] * tg) / 255));
+    data[i + 2] = Math.min(255, Math.round((data[i + 2] * tb) / 255));
+  }
+}
 
 function main() {
   const states = JSON.parse(readFileSync(join(ASSETS_IN, "blocks_states.json"), "utf8"));
+  const models = JSON.parse(readFileSync(join(ASSETS_IN, "blocks_models.json"), "utf8"));
   const texContent = JSON.parse(readFileSync(join(ASSETS_IN, "texture_content.json"), "utf8"));
 
   // texture_content.json contains duplicate (identical) entries — keep the first.
-  const textures = new Map();
+  const texContentByBlock = new Map();
   for (const entry of texContent) {
-    if (entry.texture && typeof entry.texture === "string" && !textures.has(entry.name)) {
-      textures.set(entry.name, entry.texture);
+    if (entry.texture && typeof entry.texture === "string" && !texContentByBlock.has(entry.name)) {
+      texContentByBlock.set(entry.name, entry.texture);
     }
   }
-  console.log(`texture_content: ${texContent.length} entries, ${textures.size} unique`);
+  console.log(`texture_content: ${texContent.length} entries, ${texContentByBlock.size} unique`);
+
+  // Resolve every whitelisted block into face textures; register unique tiles.
+  const tileIndex = new Map(); // tile key -> atlas index
+  const tileSpecs = []; // { key, file?: textureName, dataUrl? }
+  function tileFor(key, spec) {
+    let idx = tileIndex.get(key);
+    if (idx === undefined) {
+      idx = tileSpecs.length;
+      tileIndex.set(key, idx);
+      tileSpecs.push(spec);
+    }
+    return idx;
+  }
 
   const blocks = [];
   const missing = [];
+  const flatFallback = [];
   for (const id of WHITELIST) {
-    if (!states[id]) missing.push(`${id} (no blockstate)`);
-    const dataUrl = textures.get(id);
-    if (!dataUrl) missing.push(`${id} (no texture)`);
-    if (missing.length && missing.at(-1).startsWith(id)) continue;
-    blocks.push({ id, png: Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64") });
+    const faces = resolveBlockFaces(id, states, models);
+    if (faces) {
+      const faceTiles = {};
+      for (const dir of ["up", "down", "north", "south", "east", "west"]) {
+        const tex = faces[dir];
+        if (!existsSync(join(ASSETS_IN, "blocks", `${tex}.png`))) {
+          missing.push(`${id} (texture file ${tex}.png not fetched)`);
+          break;
+        }
+        faceTiles[dir] = tileFor(tex, { key: tex, file: tex });
+      }
+      if (Object.keys(faceTiles).length === 6) {
+        blocks.push({ id, faces: faceTiles, tile: faceTiles.south });
+        continue;
+      }
+    }
+    const dataUrl = texContentByBlock.get(id);
+    if (!dataUrl) {
+      missing.push(`${id} (no model resolution and no texture_content fallback)`);
+      continue;
+    }
+    if (!faces) flatFallback.push(id);
+    const idx = tileFor(`inline:${id}`, { key: `inline:${id}`, dataUrl });
+    blocks.push({ id, faces: null, tile: idx });
   }
+
   if (missing.length) {
-    console.error("MISSING ASSETS:\n  " + missing.join("\n  "));
+    console.error("MISSING ASSETS:\n  " + missing.join("\n  ") + "\nRun: node scripts/fetch-textures.mjs");
     process.exit(1);
   }
   if (blocks.length > SYMBOLS.length + 1) {
     console.error(`Whitelist (${blocks.length}) exceeds symbol capacity`);
     process.exit(1);
   }
-
-  // Decode tiles, sanity-check sizes (animated textures: use the first frame).
-  const tiles = [];
-  for (const b of blocks) {
-    const png = PNG.sync.read(b.png);
-    if (png.width !== TILE) {
-      console.error(`${b.id}: texture is ${png.width}x${png.height}, expected width ${TILE}`);
-      process.exit(1);
-    }
-    if (png.height % TILE !== 0) {
-      console.error(`${b.id}: texture height ${png.height} is not a multiple of ${TILE}`);
-      process.exit(1);
-    }
-    if (png.height === TILE) {
-      tiles.push(png.data);
-    } else {
-      console.log(`${b.id}: animated (${png.width}x${png.height}), using first frame`);
-      const frame = Buffer.alloc(TILE * TILE * 4);
-      png.data.copy(frame, 0, 0, TILE * TILE * 4);
-      tiles.push(frame);
-    }
+  if (flatFallback.length) {
+    console.log(`flat fallback (single texture on all faces): ${flatFallback.join(", ")}`);
   }
+
+  // Decode tiles (animated textures: use the first frame), bake tints.
+  const tiles = tileSpecs.map((spec) => {
+    const raw = spec.file
+      ? readFileSync(join(ASSETS_IN, "blocks", `${spec.file}.png`))
+      : Buffer.from(spec.dataUrl.slice(spec.dataUrl.indexOf(",") + 1), "base64");
+    const png = PNG.sync.read(raw);
+    if (png.width !== TILE || png.height % TILE !== 0) {
+      console.error(`${spec.key}: texture is ${png.width}x${png.height}, expected ${TILE}x?${TILE}`);
+      process.exit(1);
+    }
+    const frame = Buffer.alloc(TILE * TILE * 4);
+    png.data.copy(frame, 0, 0, TILE * TILE * 4);
+    if (png.height > TILE) console.log(`${spec.key}: animated (${png.width}x${png.height}), using first frame`);
+    const tint = spec.file ? TINTS.get(spec.file) : undefined;
+    if (tint) {
+      applyTint(frame, tint);
+      console.log(`${spec.key}: baked tint 0x${tint.toString(16).padStart(6, "0")}`);
+    }
+    return frame;
+  });
 
   // Compose atlas.
   const cols = ATLAS_COLS;
@@ -132,8 +150,9 @@ function main() {
     blocks: blocks.map((b, i) => ({
       id: b.id,
       symbol: SYMBOLS[i],
-      tile: i,
+      tile: b.tile,
       transparent: TRANSPARENT.has(b.id),
+      ...(b.faces ? { faces: b.faces } : {}),
     })),
   };
 
@@ -143,7 +162,14 @@ function main() {
 
   console.log(`atlas.png: ${cols * TILE}x${rows * TILE} (${tiles.length} tiles)`);
   console.log(`palette.json: ${blocks.length} blocks`);
-  console.log("\nPalette table (for the LLM system prompt later):");
+  const multi = blocks.filter((b) => b.faces && new Set(Object.values(b.faces)).size > 1);
+  if (multi.length) {
+    console.log("\nPer-face blocks (up/down vs sides):");
+    for (const b of multi) {
+      console.log(`  ${b.id}: ${[...new Set(Object.values(b.faces))].join(", ")}`);
+    }
+  }
+  console.log("\nPalette table:");
   for (const { symbol, id } of catalog.blocks) console.log(`  ${symbol} = ${id}`);
   console.log(`  . = air`);
 }

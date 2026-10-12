@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ATLAS, INFO_BY_ID } from "../palette/palette";
+import { ATLAS, INFO_BY_ID, faceTile } from "../palette/palette.ts";
 import { FACES } from "./faceTable.ts";
 import type { Build } from "../build/types";
 
@@ -63,11 +63,12 @@ export function buildGeometry(build: Build, transparentClass: boolean): THREE.Bu
     const x = index % w;
     const y = Math.floor(index / (d * w));
     const z = Math.floor((index % (d * w)) / w);
-    const { u0, v0, du, dv } = tileUV(info.tile);
 
     for (const face of FACES) {
       const [dx, dy, dz] = face.dir;
       if (!faceVisible(id, at(x + dx, y + dy, z + dz))) continue;
+      // Per-face tile: log tops, grass tops, hay ends, etc. (flat fallback otherwise).
+      const { u0, v0, du, dv } = tileUV(faceTile(info, face.id));
       const base = positions.length / 3;
       for (const corner of face.corners) {
         positions.push(x + corner.pos[0], y + corner.pos[1], z + corner.pos[2]);

@@ -9,439 +9,1023 @@
       "id": "stone",
       "symbol": "A",
       "tile": 0,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 0,
+        "down": 0,
+        "north": 0,
+        "south": 0,
+        "east": 0,
+        "west": 0
+      }
     },
     {
       "id": "cobblestone",
       "symbol": "B",
       "tile": 1,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 1,
+        "down": 1,
+        "north": 1,
+        "south": 1,
+        "east": 1,
+        "west": 1
+      }
     },
     {
       "id": "mossy_cobblestone",
       "symbol": "C",
       "tile": 2,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 2,
+        "down": 2,
+        "north": 2,
+        "south": 2,
+        "east": 2,
+        "west": 2
+      }
     },
     {
       "id": "stone_bricks",
       "symbol": "D",
       "tile": 3,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 3,
+        "down": 3,
+        "north": 3,
+        "south": 3,
+        "east": 3,
+        "west": 3
+      }
     },
     {
       "id": "mossy_stone_bricks",
       "symbol": "E",
       "tile": 4,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 4,
+        "down": 4,
+        "north": 4,
+        "south": 4,
+        "east": 4,
+        "west": 4
+      }
     },
     {
       "id": "chiseled_stone_bricks",
       "symbol": "F",
       "tile": 5,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 5,
+        "down": 5,
+        "north": 5,
+        "south": 5,
+        "east": 5,
+        "west": 5
+      }
     },
     {
       "id": "smooth_stone",
       "symbol": "G",
       "tile": 6,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 6,
+        "down": 6,
+        "north": 6,
+        "south": 6,
+        "east": 6,
+        "west": 6
+      }
     },
     {
       "id": "granite",
       "symbol": "H",
       "tile": 7,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 7,
+        "down": 7,
+        "north": 7,
+        "south": 7,
+        "east": 7,
+        "west": 7
+      }
     },
     {
       "id": "diorite",
       "symbol": "I",
       "tile": 8,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 8,
+        "down": 8,
+        "north": 8,
+        "south": 8,
+        "east": 8,
+        "west": 8
+      }
     },
     {
       "id": "andesite",
       "symbol": "J",
       "tile": 9,
-      "transparent": false
+      "transparent": false,
+      "faces": {
+        "up": 9,
+        "down": 9,
+        "north": 9,
+        "south": 9,
+        "east": 9,
+        "west": 9
+      }
     },
     {
       "id": "deepslate",
       "symbol": "K",
-      "tile": 10,
-      "transparent": false
+      "tile": 11,
+      "transparent": false,
+      "faces": {
+        "up": 10,
+        "down": 10,
+        "north": 11,
+        "south": 11,
+        "east": 11,
+        "west": 11
+      }
     },
     {
       "id": "cobbled_deepslate",
       "symbol": "L",
-      "tile": 11,
-      "transparent": false
+      "tile": 12,
+      "transparent": false,
+      "faces": {
+        "up": 12,
+        "down": 12,
+        "north": 12,
+        "south": 12,
+        "east": 12,
+        "west": 12
+      }
     },
     {
       "id": "deepslate_bricks",
       "symbol": "M",
-      "tile": 12,
-      "transparent": false
+      "tile": 13,
+      "transparent": false,
+      "faces": {
+        "up": 13,
+        "down": 13,
+        "north": 13,
+        "south": 13,
+        "east": 13,
+        "west": 13
+      }
     },
     {
       "id": "blackstone",
       "symbol": "N",
-      "tile": 13,
-      "transparent": false
+      "tile": 15,
+      "transparent": false,
+      "faces": {
+        "up": 14,
+        "down": 14,
+        "north": 15,
+        "south": 15,
+        "east": 15,
+        "west": 15
+      }
     },
     {
       "id": "polished_blackstone_bricks",
       "symbol": "O",
-      "tile": 14,
-      "transparent": false
+      "tile": 16,
+      "transparent": false,
+      "faces": {
+        "up": 16,
+        "down": 16,
+        "north": 16,
+        "south": 16,
+        "east": 16,
+        "west": 16
+      }
     },
     {
       "id": "bricks",
       "symbol": "P",
-      "tile": 15,
-      "transparent": false
+      "tile": 17,
+      "transparent": false,
+      "faces": {
+        "up": 17,
+        "down": 17,
+        "north": 17,
+        "south": 17,
+        "east": 17,
+        "west": 17
+      }
     },
     {
       "id": "netherrack",
       "symbol": "Q",
-      "tile": 16,
-      "transparent": false
+      "tile": 18,
+      "transparent": false,
+      "faces": {
+        "up": 18,
+        "down": 18,
+        "north": 18,
+        "south": 18,
+        "east": 18,
+        "west": 18
+      }
     },
     {
       "id": "nether_bricks",
       "symbol": "R",
-      "tile": 17,
-      "transparent": false
+      "tile": 19,
+      "transparent": false,
+      "faces": {
+        "up": 19,
+        "down": 19,
+        "north": 19,
+        "south": 19,
+        "east": 19,
+        "west": 19
+      }
     },
     {
       "id": "obsidian",
       "symbol": "S",
-      "tile": 18,
-      "transparent": false
+      "tile": 20,
+      "transparent": false,
+      "faces": {
+        "up": 20,
+        "down": 20,
+        "north": 20,
+        "south": 20,
+        "east": 20,
+        "west": 20
+      }
     },
     {
       "id": "end_stone_bricks",
       "symbol": "T",
-      "tile": 19,
-      "transparent": false
+      "tile": 21,
+      "transparent": false,
+      "faces": {
+        "up": 21,
+        "down": 21,
+        "north": 21,
+        "south": 21,
+        "east": 21,
+        "west": 21
+      }
     },
     {
       "id": "quartz_block",
       "symbol": "U",
-      "tile": 20,
-      "transparent": false
+      "tile": 23,
+      "transparent": false,
+      "faces": {
+        "up": 22,
+        "down": 22,
+        "north": 23,
+        "south": 23,
+        "east": 23,
+        "west": 23
+      }
     },
     {
       "id": "quartz_bricks",
       "symbol": "V",
-      "tile": 21,
-      "transparent": false
+      "tile": 24,
+      "transparent": false,
+      "faces": {
+        "up": 24,
+        "down": 24,
+        "north": 24,
+        "south": 24,
+        "east": 24,
+        "west": 24
+      }
     },
     {
       "id": "dark_prismarine",
       "symbol": "W",
-      "tile": 22,
-      "transparent": false
+      "tile": 25,
+      "transparent": false,
+      "faces": {
+        "up": 25,
+        "down": 25,
+        "north": 25,
+        "south": 25,
+        "east": 25,
+        "west": 25
+      }
     },
     {
       "id": "grass_block",
       "symbol": "X",
-      "tile": 23,
-      "transparent": false
+      "tile": 28,
+      "transparent": false,
+      "faces": {
+        "up": 26,
+        "down": 27,
+        "north": 28,
+        "south": 28,
+        "east": 28,
+        "west": 28
+      }
     },
     {
       "id": "dirt",
       "symbol": "Y",
-      "tile": 24,
-      "transparent": false
+      "tile": 27,
+      "transparent": false,
+      "faces": {
+        "up": 27,
+        "down": 27,
+        "north": 27,
+        "south": 27,
+        "east": 27,
+        "west": 27
+      }
     },
     {
       "id": "sand",
       "symbol": "Z",
-      "tile": 25,
-      "transparent": false
+      "tile": 29,
+      "transparent": false,
+      "faces": {
+        "up": 29,
+        "down": 29,
+        "north": 29,
+        "south": 29,
+        "east": 29,
+        "west": 29
+      }
     },
     {
       "id": "gravel",
       "symbol": "a",
-      "tile": 26,
-      "transparent": false
+      "tile": 30,
+      "transparent": false,
+      "faces": {
+        "up": 30,
+        "down": 30,
+        "north": 30,
+        "south": 30,
+        "east": 30,
+        "west": 30
+      }
     },
     {
       "id": "snow_block",
       "symbol": "b",
-      "tile": 27,
-      "transparent": false
+      "tile": 31,
+      "transparent": false,
+      "faces": {
+        "up": 31,
+        "down": 31,
+        "north": 31,
+        "south": 31,
+        "east": 31,
+        "west": 31
+      }
     },
     {
       "id": "clay",
       "symbol": "c",
-      "tile": 28,
-      "transparent": false
+      "tile": 32,
+      "transparent": false,
+      "faces": {
+        "up": 32,
+        "down": 32,
+        "north": 32,
+        "south": 32,
+        "east": 32,
+        "west": 32
+      }
     },
     {
       "id": "moss_block",
       "symbol": "d",
-      "tile": 29,
-      "transparent": false
+      "tile": 33,
+      "transparent": false,
+      "faces": {
+        "up": 33,
+        "down": 33,
+        "north": 33,
+        "south": 33,
+        "east": 33,
+        "west": 33
+      }
     },
     {
       "id": "hay_block",
       "symbol": "e",
-      "tile": 30,
-      "transparent": false
+      "tile": 35,
+      "transparent": false,
+      "faces": {
+        "up": 34,
+        "down": 34,
+        "north": 35,
+        "south": 35,
+        "east": 35,
+        "west": 35
+      }
     },
     {
       "id": "oak_planks",
       "symbol": "f",
-      "tile": 31,
-      "transparent": false
+      "tile": 36,
+      "transparent": false,
+      "faces": {
+        "up": 36,
+        "down": 36,
+        "north": 36,
+        "south": 36,
+        "east": 36,
+        "west": 36
+      }
     },
     {
       "id": "spruce_planks",
       "symbol": "g",
-      "tile": 32,
-      "transparent": false
+      "tile": 37,
+      "transparent": false,
+      "faces": {
+        "up": 37,
+        "down": 37,
+        "north": 37,
+        "south": 37,
+        "east": 37,
+        "west": 37
+      }
     },
     {
       "id": "birch_planks",
       "symbol": "h",
-      "tile": 33,
-      "transparent": false
+      "tile": 38,
+      "transparent": false,
+      "faces": {
+        "up": 38,
+        "down": 38,
+        "north": 38,
+        "south": 38,
+        "east": 38,
+        "west": 38
+      }
     },
     {
       "id": "jungle_planks",
       "symbol": "i",
-      "tile": 34,
-      "transparent": false
+      "tile": 39,
+      "transparent": false,
+      "faces": {
+        "up": 39,
+        "down": 39,
+        "north": 39,
+        "south": 39,
+        "east": 39,
+        "west": 39
+      }
     },
     {
       "id": "acacia_planks",
       "symbol": "j",
-      "tile": 35,
-      "transparent": false
+      "tile": 40,
+      "transparent": false,
+      "faces": {
+        "up": 40,
+        "down": 40,
+        "north": 40,
+        "south": 40,
+        "east": 40,
+        "west": 40
+      }
     },
     {
       "id": "dark_oak_planks",
       "symbol": "k",
-      "tile": 36,
-      "transparent": false
+      "tile": 41,
+      "transparent": false,
+      "faces": {
+        "up": 41,
+        "down": 41,
+        "north": 41,
+        "south": 41,
+        "east": 41,
+        "west": 41
+      }
     },
     {
       "id": "crimson_planks",
       "symbol": "l",
-      "tile": 37,
-      "transparent": false
+      "tile": 42,
+      "transparent": false,
+      "faces": {
+        "up": 42,
+        "down": 42,
+        "north": 42,
+        "south": 42,
+        "east": 42,
+        "west": 42
+      }
     },
     {
       "id": "warped_planks",
       "symbol": "m",
-      "tile": 38,
-      "transparent": false
+      "tile": 43,
+      "transparent": false,
+      "faces": {
+        "up": 43,
+        "down": 43,
+        "north": 43,
+        "south": 43,
+        "east": 43,
+        "west": 43
+      }
     },
     {
       "id": "oak_log",
       "symbol": "n",
-      "tile": 39,
-      "transparent": false
+      "tile": 45,
+      "transparent": false,
+      "faces": {
+        "up": 44,
+        "down": 44,
+        "north": 45,
+        "south": 45,
+        "east": 45,
+        "west": 45
+      }
     },
     {
       "id": "spruce_log",
       "symbol": "o",
-      "tile": 40,
-      "transparent": false
+      "tile": 47,
+      "transparent": false,
+      "faces": {
+        "up": 46,
+        "down": 46,
+        "north": 47,
+        "south": 47,
+        "east": 47,
+        "west": 47
+      }
     },
     {
       "id": "birch_log",
       "symbol": "p",
-      "tile": 41,
-      "transparent": false
+      "tile": 49,
+      "transparent": false,
+      "faces": {
+        "up": 48,
+        "down": 48,
+        "north": 49,
+        "south": 49,
+        "east": 49,
+        "west": 49
+      }
     },
     {
       "id": "dark_oak_log",
       "symbol": "q",
-      "tile": 42,
-      "transparent": false
+      "tile": 51,
+      "transparent": false,
+      "faces": {
+        "up": 50,
+        "down": 50,
+        "north": 51,
+        "south": 51,
+        "east": 51,
+        "west": 51
+      }
     },
     {
       "id": "glass",
       "symbol": "r",
-      "tile": 43,
-      "transparent": true
+      "tile": 52,
+      "transparent": true,
+      "faces": {
+        "up": 52,
+        "down": 52,
+        "north": 52,
+        "south": 52,
+        "east": 52,
+        "west": 52
+      }
     },
     {
       "id": "glowstone",
       "symbol": "s",
-      "tile": 44,
-      "transparent": false
+      "tile": 53,
+      "transparent": false,
+      "faces": {
+        "up": 53,
+        "down": 53,
+        "north": 53,
+        "south": 53,
+        "east": 53,
+        "west": 53
+      }
     },
     {
       "id": "sea_lantern",
       "symbol": "t",
-      "tile": 45,
-      "transparent": false
+      "tile": 54,
+      "transparent": false,
+      "faces": {
+        "up": 54,
+        "down": 54,
+        "north": 54,
+        "south": 54,
+        "east": 54,
+        "west": 54
+      }
     },
     {
       "id": "shroomlight",
       "symbol": "u",
-      "tile": 46,
-      "transparent": false
+      "tile": 55,
+      "transparent": false,
+      "faces": {
+        "up": 55,
+        "down": 55,
+        "north": 55,
+        "south": 55,
+        "east": 55,
+        "west": 55
+      }
     },
     {
       "id": "white_wool",
       "symbol": "v",
-      "tile": 47,
-      "transparent": false
+      "tile": 56,
+      "transparent": false,
+      "faces": {
+        "up": 56,
+        "down": 56,
+        "north": 56,
+        "south": 56,
+        "east": 56,
+        "west": 56
+      }
     },
     {
       "id": "light_gray_wool",
       "symbol": "w",
-      "tile": 48,
-      "transparent": false
+      "tile": 57,
+      "transparent": false,
+      "faces": {
+        "up": 57,
+        "down": 57,
+        "north": 57,
+        "south": 57,
+        "east": 57,
+        "west": 57
+      }
     },
     {
       "id": "gray_wool",
       "symbol": "x",
-      "tile": 49,
-      "transparent": false
+      "tile": 58,
+      "transparent": false,
+      "faces": {
+        "up": 58,
+        "down": 58,
+        "north": 58,
+        "south": 58,
+        "east": 58,
+        "west": 58
+      }
     },
     {
       "id": "black_wool",
       "symbol": "y",
-      "tile": 50,
-      "transparent": false
+      "tile": 59,
+      "transparent": false,
+      "faces": {
+        "up": 59,
+        "down": 59,
+        "north": 59,
+        "south": 59,
+        "east": 59,
+        "west": 59
+      }
     },
     {
       "id": "red_wool",
       "symbol": "z",
-      "tile": 51,
-      "transparent": false
+      "tile": 60,
+      "transparent": false,
+      "faces": {
+        "up": 60,
+        "down": 60,
+        "north": 60,
+        "south": 60,
+        "east": 60,
+        "west": 60
+      }
     },
     {
       "id": "blue_wool",
       "symbol": "0",
-      "tile": 52,
-      "transparent": false
+      "tile": 61,
+      "transparent": false,
+      "faces": {
+        "up": 61,
+        "down": 61,
+        "north": 61,
+        "south": 61,
+        "east": 61,
+        "west": 61
+      }
     },
     {
       "id": "yellow_wool",
       "symbol": "1",
-      "tile": 53,
-      "transparent": false
+      "tile": 62,
+      "transparent": false,
+      "faces": {
+        "up": 62,
+        "down": 62,
+        "north": 62,
+        "south": 62,
+        "east": 62,
+        "west": 62
+      }
     },
     {
       "id": "lime_wool",
       "symbol": "2",
-      "tile": 54,
-      "transparent": false
+      "tile": 63,
+      "transparent": false,
+      "faces": {
+        "up": 63,
+        "down": 63,
+        "north": 63,
+        "south": 63,
+        "east": 63,
+        "west": 63
+      }
     },
     {
       "id": "white_concrete",
       "symbol": "3",
-      "tile": 55,
-      "transparent": false
+      "tile": 64,
+      "transparent": false,
+      "faces": {
+        "up": 64,
+        "down": 64,
+        "north": 64,
+        "south": 64,
+        "east": 64,
+        "west": 64
+      }
     },
     {
       "id": "light_gray_concrete",
       "symbol": "4",
-      "tile": 56,
-      "transparent": false
+      "tile": 65,
+      "transparent": false,
+      "faces": {
+        "up": 65,
+        "down": 65,
+        "north": 65,
+        "south": 65,
+        "east": 65,
+        "west": 65
+      }
     },
     {
       "id": "gray_concrete",
       "symbol": "5",
-      "tile": 57,
-      "transparent": false
+      "tile": 66,
+      "transparent": false,
+      "faces": {
+        "up": 66,
+        "down": 66,
+        "north": 66,
+        "south": 66,
+        "east": 66,
+        "west": 66
+      }
     },
     {
       "id": "black_concrete",
       "symbol": "6",
-      "tile": 58,
-      "transparent": false
+      "tile": 67,
+      "transparent": false,
+      "faces": {
+        "up": 67,
+        "down": 67,
+        "north": 67,
+        "south": 67,
+        "east": 67,
+        "west": 67
+      }
     },
     {
       "id": "red_concrete",
       "symbol": "7",
-      "tile": 59,
-      "transparent": false
+      "tile": 68,
+      "transparent": false,
+      "faces": {
+        "up": 68,
+        "down": 68,
+        "north": 68,
+        "south": 68,
+        "east": 68,
+        "west": 68
+      }
     },
     {
       "id": "blue_concrete",
       "symbol": "8",
-      "tile": 60,
-      "transparent": false
+      "tile": 69,
+      "transparent": false,
+      "faces": {
+        "up": 69,
+        "down": 69,
+        "north": 69,
+        "south": 69,
+        "east": 69,
+        "west": 69
+      }
     },
     {
       "id": "yellow_concrete",
       "symbol": "9",
-      "tile": 61,
-      "transparent": false
+      "tile": 70,
+      "transparent": false,
+      "faces": {
+        "up": 70,
+        "down": 70,
+        "north": 70,
+        "south": 70,
+        "east": 70,
+        "west": 70
+      }
     },
     {
       "id": "lime_concrete",
       "symbol": "!",
-      "tile": 62,
-      "transparent": false
+      "tile": 71,
+      "transparent": false,
+      "faces": {
+        "up": 71,
+        "down": 71,
+        "north": 71,
+        "south": 71,
+        "east": 71,
+        "west": 71
+      }
     },
     {
       "id": "iron_block",
       "symbol": "?",
-      "tile": 63,
-      "transparent": false
+      "tile": 72,
+      "transparent": false,
+      "faces": {
+        "up": 72,
+        "down": 72,
+        "north": 72,
+        "south": 72,
+        "east": 72,
+        "west": 72
+      }
     },
     {
       "id": "gold_block",
       "symbol": "#",
-      "tile": 64,
-      "transparent": false
+      "tile": 73,
+      "transparent": false,
+      "faces": {
+        "up": 73,
+        "down": 73,
+        "north": 73,
+        "south": 73,
+        "east": 73,
+        "west": 73
+      }
     },
     {
       "id": "diamond_block",
       "symbol": "$",
-      "tile": 65,
-      "transparent": false
+      "tile": 74,
+      "transparent": false,
+      "faces": {
+        "up": 74,
+        "down": 74,
+        "north": 74,
+        "south": 74,
+        "east": 74,
+        "west": 74
+      }
     },
     {
       "id": "coal_block",
       "symbol": "%",
-      "tile": 66,
-      "transparent": false
+      "tile": 75,
+      "transparent": false,
+      "faces": {
+        "up": 75,
+        "down": 75,
+        "north": 75,
+        "south": 75,
+        "east": 75,
+        "west": 75
+      }
     },
     {
       "id": "redstone_block",
       "symbol": "&",
-      "tile": 67,
-      "transparent": false
+      "tile": 76,
+      "transparent": false,
+      "faces": {
+        "up": 76,
+        "down": 76,
+        "north": 76,
+        "south": 76,
+        "east": 76,
+        "west": 76
+      }
     },
     {
       "id": "lapis_block",
       "symbol": "*",
-      "tile": 68,
-      "transparent": false
+      "tile": 77,
+      "transparent": false,
+      "faces": {
+        "up": 77,
+        "down": 77,
+        "north": 77,
+        "south": 77,
+        "east": 77,
+        "west": 77
+      }
     },
     {
       "id": "oak_leaves",
       "symbol": "+",
-      "tile": 69,
-      "transparent": true
+      "tile": 78,
+      "transparent": true,
+      "faces": {
+        "up": 78,
+        "down": 78,
+        "north": 78,
+        "south": 78,
+        "east": 78,
+        "west": 78
+      }
     },
     {
       "id": "spruce_leaves",
       "symbol": "-",
-      "tile": 70,
-      "transparent": true
+      "tile": 79,
+      "transparent": true,
+      "faces": {
+        "up": 79,
+        "down": 79,
+        "north": 79,
+        "south": 79,
+        "east": 79,
+        "west": 79
+      }
     },
     {
       "id": "cherry_leaves",
       "symbol": "=",
-      "tile": 71,
-      "transparent": true
+      "tile": 80,
+      "transparent": true,
+      "faces": {
+        "up": 80,
+        "down": 80,
+        "north": 80,
+        "south": 80,
+        "east": 80,
+        "west": 80
+      }
     },
     {
       "id": "terracotta",
       "symbol": ",",
-      "tile": 72,
-      "transparent": false
+      "tile": 81,
+      "transparent": false,
+      "faces": {
+        "up": 81,
+        "down": 81,
+        "north": 81,
+        "south": 81,
+        "east": 81,
+        "west": 81
+      }
     }
   ]
 }

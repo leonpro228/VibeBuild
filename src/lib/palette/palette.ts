@@ -1,10 +1,14 @@
 import catalog from "../../assets/palette.json" with { type: "json" };
 
+export type FaceDir = "up" | "down" | "north" | "south" | "east" | "west";
+
 export interface PaletteBlockInfo {
   id: string;
   symbol: string;
   tile: number;
   transparent: boolean;
+  /** Per-face atlas tile indices (vanilla model resolution); absent = flat tile. */
+  faces?: Record<FaceDir, number>;
 }
 
 export const PALETTE_BLOCKS: PaletteBlockInfo[] = catalog.blocks as PaletteBlockInfo[];
@@ -22,6 +26,11 @@ export const AIR_SYMBOL = ".";
 export function symbolToId(symbol: string): string | null {
   if (symbol === AIR_SYMBOL) return "air";
   return SYMBOL_TO_ID.get(symbol) ?? null;
+}
+
+/** Atlas tile for a given cube face (falls back to the flat tile). */
+export function faceTile(info: PaletteBlockInfo, face: FaceDir): number {
+  return info.faces?.[face] ?? info.tile;
 }
 
 /** Symbol rows for a build layer (for prompts and tests). */

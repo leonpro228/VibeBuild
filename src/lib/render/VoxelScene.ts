@@ -25,7 +25,7 @@ export class VoxelScene {
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(8, 14, 6);
     this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xbfd4ff, 0.5);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
     fill.position.set(-6, 8, -10);
     this.scene.add(fill);
 

@@ -2,7 +2,8 @@
  * Headless sanity check of voxel geometry construction (no browser needed).
  * Run: node scripts/check-geometry.mjs
  */
-import { buildGeometry, flattenGrid, INFO_BY_ID } from "../src/lib/render/voxelGeometry.ts";
+import { buildGeometry, flattenGrid } from "../src/lib/render/voxelGeometry.ts";
+import { INFO_BY_ID } from "../src/lib/palette/palette.ts";
 import { demoBuild } from "../src/lib/build/demo.ts";
 
 function fail(msg) {

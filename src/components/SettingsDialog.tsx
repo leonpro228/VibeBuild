@@ -14,6 +14,10 @@ const PROVIDER_DEFAULTS: Record<ProviderKind, { baseUrl: string; model: string; 
   },
 };
 
+const FIELD =
+  "mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-neutral-600 focus:border-white/60";
+const LABEL = "mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500";
+
 export function SettingsDialog({
   open,
   onClose,
@@ -72,70 +76,62 @@ export function SettingsDialog({
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#11151d] p-5 shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl shadow-black/60">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Настройки провайдера</h2>
-          <button onClick={onClose} className="text-slate-500 transition hover:text-slate-200">
+          <h2 className="text-lg font-semibold text-white">Настройки провайдера</h2>
+          <button onClick={onClose} className="text-neutral-500 transition hover:text-white">
             ✕
           </button>
         </div>
 
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-          Провайдер
-        </label>
+        <label className={LABEL}>Провайдер</label>
         <select
           value={provider}
           onChange={(e) => applyProviderDefaults(e.currentTarget.value as ProviderKind)}
-          className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-emerald-400/50"
+          className={FIELD + " bg-neutral-900"}
         >
           <option value="openai">OpenAI-совместимый (OpenAI / DeepSeek / OpenRouter / Ollama)</option>
           <option value="anthropic">Anthropic (Claude)</option>
         </select>
 
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-          Base URL
-        </label>
+        <label className={LABEL}>Base URL</label>
         <input
           value={baseUrl}
           onChange={(e) => setBaseUrl(e.currentTarget.value)}
           placeholder={PROVIDER_DEFAULTS[provider].baseUrl}
-          className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+          className={FIELD}
         />
 
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-          Модель
-        </label>
+        <label className={LABEL}>Модель</label>
         <input
           value={model}
           onChange={(e) => setModel(e.currentTarget.value)}
           placeholder={PROVIDER_DEFAULTS[provider].model}
-          className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+          className={FIELD}
         />
 
-        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-          API-ключ
-        </label>
+        <label className={LABEL}>API-ключ</label>
         <input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.currentTarget.value)}
           placeholder={PROVIDER_DEFAULTS[provider].keyHint}
-          className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+          className={FIELD + " mb-4"}
         />
 
-        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mb-3 text-sm text-neutral-200">⚠ {error}</p>}
 
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-slate-400 transition hover:text-slate-200"
+            className="rounded-lg px-4 py-2 text-sm text-neutral-400 transition hover:text-white"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-[#0b0e14] transition hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-neutral-300 disabled:opacity-50"
           >
             {saving ? "Сохраняю…" : "Сохранить"}
           </button>
