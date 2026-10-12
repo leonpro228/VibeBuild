@@ -15,6 +15,7 @@ dist-ssr
 summary.md
 json examples
 json assets
+.cargo-home
 
 # Editor directories and files
 .vscode/*

@@ -1,19 +1,7 @@
 import * as THREE from "three";
-import catalog from "../../assets/palette.json" with { type: "json" };
+import { ATLAS, INFO_BY_ID } from "../palette/palette";
 import { FACES } from "./faceTable.ts";
 import type { Build } from "../build/types";
-
-interface BlockInfo {
-  id: string;
-  symbol: string;
-  tile: number;
-  transparent: boolean;
-}
-
-export const ATLAS = catalog.atlas;
-export const INFO_BY_ID = new Map<string, BlockInfo>(
-  (catalog.blocks as BlockInfo[]).map((b) => [b.id, b]),
-);
 
 /** UV rectangle of a tile inside the atlas, with a small inset against bleeding. */
 export function tileUV(tile: number): { u0: number; v0: number; du: number; dv: number } {
