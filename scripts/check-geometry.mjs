@@ -62,4 +62,20 @@ for (const id of new Set([...grid.values()])) {
 }
 console.log("all demo blocks present in palette");
 
+// 5. Focus-mode slice regression: faces opening into hidden layers above must
+// be drawn (exposedAbove), otherwise the focused layer looks "eaten" where
+// hidden walls sit on top of it.
+const focusGeo = buildGeometry(demoBuild, false, { y: (y) => y === 0, exposedAbove: 1 });
+const focusFaces = focusGeo.getAttribute("position").count / 4;
+// 5×5 dirt floor: 25 top + 25 bottom + 20 outward sides = 70.
+if (focusFaces !== 70) {
+  fail(`focus slice y=0: ${focusFaces} faces, expected 70 (hidden neighbors must expose faces)`);
+}
+const plainGeo = buildGeometry(demoBuild, false, { y: (y) => y === 0 });
+const plainFaces = plainGeo.getAttribute("position").count / 4;
+if (plainFaces >= focusFaces) fail("exposedAbove had no effect on face culling");
+console.log(`focus slice: ${focusFaces} faces (with exposedAbove), ${plainFaces} without`);
+focusGeo.dispose();
+plainGeo.dispose();
+
 console.log("geometry checks OK");

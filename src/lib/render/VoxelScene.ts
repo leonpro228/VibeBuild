@@ -78,10 +78,25 @@ export class VoxelScene {
       addMesh(buildGeometry(build, false), material(false, false));
       addMesh(buildGeometry(build, true), material(false, true));
     } else {
-      addMesh(buildGeometry(build, false, (y) => y < focusY), material(true, false));
-      addMesh(buildGeometry(build, true, (y) => y < focusY), material(true, true));
-      addMesh(buildGeometry(build, false, (y) => y === focusY), material(false, false));
-      addMesh(buildGeometry(build, true, (y) => y === focusY), material(false, true));
+      // Layers above the focus are hidden — faces opening into them are exposed,
+      // otherwise the focused layer looks "eaten" where hidden walls sit above.
+      const exposedAbove = focusY + 1;
+      addMesh(
+        buildGeometry(build, false, { y: (y) => y < focusY, exposedAbove }),
+        material(true, false),
+      );
+      addMesh(
+        buildGeometry(build, true, { y: (y) => y < focusY, exposedAbove }),
+        material(true, true),
+      );
+      addMesh(
+        buildGeometry(build, false, { y: (y) => y === focusY, exposedAbove }),
+        material(false, false),
+      );
+      addMesh(
+        buildGeometry(build, true, { y: (y) => y === focusY, exposedAbove }),
+        material(false, true),
+      );
     }
 
     const { width: w, height: h, depth: d } = build.size;

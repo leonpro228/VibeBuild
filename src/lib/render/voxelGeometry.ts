@@ -42,13 +42,22 @@ export function flattenGrid(build: Build): Map<number, string> {
   return grid;
 }
 
-/** Builds a merged BufferGeometry for one material class of blocks.
- *  `yFilter` (optional) restricts which layers contribute (instruction focus mode). */
+/** Slice selector for instruction focus mode. */
+export interface GeometrySlice {
+  /** Include only layers matching this predicate. */
+  y?: (y: number) => boolean;
+  /** Neighbors at y >= this are treated as air: layers above the rendered
+   *  region are hidden, so faces opening into them must be drawn. */
+  exposedAbove?: number;
+}
+
+/** Builds a merged BufferGeometry for one material class of blocks. */
 export function buildGeometry(
   build: Build,
   transparentClass: boolean,
-  yFilter?: (y: number) => boolean,
+  slice: GeometrySlice = {},
 ): THREE.BufferGeometry {
+  const { y: yFilter, exposedAbove } = slice;
   const { width: w, height: h, depth: d } = build.size;
   const grid = flattenGrid(build);
 
@@ -72,7 +81,13 @@ export function buildGeometry(
 
     for (const face of FACES) {
       const [dx, dy, dz] = face.dir;
-      if (!faceVisible(id, at(x + dx, y + dy, z + dz))) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      const neighbor = at(nx, ny, z + dz);
+      // Hidden neighbor (above the rendered slice) or air → the face is exposed.
+      const exposed =
+        !neighbor || (exposedAbove !== undefined && ny >= exposedAbove);
+      if (!exposed && !faceVisible(id, neighbor)) continue;
       // Per-face tile: log tops, grass tops, hay ends, etc. (flat fallback otherwise).
       const { u0, v0, du, dv } = tileUV(faceTile(info, face.id));
       const base = positions.length / 3;
