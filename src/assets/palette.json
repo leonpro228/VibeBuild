@@ -1,0 +1,447 @@
+{
+  "atlas": {
+    "tileSize": 16,
+    "cols": 12,
+    "rows": 7
+  },
+  "blocks": [
+    {
+      "id": "stone",
+      "symbol": "A",
+      "tile": 0,
+      "transparent": false
+    },
+    {
+      "id": "cobblestone",
+      "symbol": "B",
+      "tile": 1,
+      "transparent": false
+    },
+    {
+      "id": "mossy_cobblestone",
+      "symbol": "C",
+      "tile": 2,
+      "transparent": false
+    },
+    {
+      "id": "stone_bricks",
+      "symbol": "D",
+      "tile": 3,
+      "transparent": false
+    },
+    {
+      "id": "mossy_stone_bricks",
+      "symbol": "E",
+      "tile": 4,
+      "transparent": false
+    },
+    {
+      "id": "chiseled_stone_bricks",
+      "symbol": "F",
+      "tile": 5,
+      "transparent": false
+    },
+    {
+      "id": "smooth_stone",
+      "symbol": "G",
+      "tile": 6,
+      "transparent": false
+    },
+    {
+      "id": "granite",
+      "symbol": "H",
+      "tile": 7,
+      "transparent": false
+    },
+    {
+      "id": "diorite",
+      "symbol": "I",
+      "tile": 8,
+      "transparent": false
+    },
+    {
+      "id": "andesite",
+      "symbol": "J",
+      "tile": 9,
+      "transparent": false
+    },
+    {
+      "id": "deepslate",
+      "symbol": "K",
+      "tile": 10,
+      "transparent": false
+    },
+    {
+      "id": "cobbled_deepslate",
+      "symbol": "L",
+      "tile": 11,
+      "transparent": false
+    },
+    {
+      "id": "deepslate_bricks",
+      "symbol": "M",
+      "tile": 12,
+      "transparent": false
+    },
+    {
+      "id": "blackstone",
+      "symbol": "N",
+      "tile": 13,
+      "transparent": false
+    },
+    {
+      "id": "polished_blackstone_bricks",
+      "symbol": "O",
+      "tile": 14,
+      "transparent": false
+    },
+    {
+      "id": "bricks",
+      "symbol": "P",
+      "tile": 15,
+      "transparent": false
+    },
+    {
+      "id": "netherrack",
+      "symbol": "Q",
+      "tile": 16,
+      "transparent": false
+    },
+    {
+      "id": "nether_bricks",
+      "symbol": "R",
+      "tile": 17,
+      "transparent": false
+    },
+    {
+      "id": "obsidian",
+      "symbol": "S",
+      "tile": 18,
+      "transparent": false
+    },
+    {
+      "id": "end_stone_bricks",
+      "symbol": "T",
+      "tile": 19,
+      "transparent": false
+    },
+    {
+      "id": "quartz_block",
+      "symbol": "U",
+      "tile": 20,
+      "transparent": false
+    },
+    {
+      "id": "quartz_bricks",
+      "symbol": "V",
+      "tile": 21,
+      "transparent": false
+    },
+    {
+      "id": "dark_prismarine",
+      "symbol": "W",
+      "tile": 22,
+      "transparent": false
+    },
+    {
+      "id": "grass_block",
+      "symbol": "X",
+      "tile": 23,
+      "transparent": false
+    },
+    {
+      "id": "dirt",
+      "symbol": "Y",
+      "tile": 24,
+      "transparent": false
+    },
+    {
+      "id": "sand",
+      "symbol": "Z",
+      "tile": 25,
+      "transparent": false
+    },
+    {
+      "id": "gravel",
+      "symbol": "a",
+      "tile": 26,
+      "transparent": false
+    },
+    {
+      "id": "snow_block",
+      "symbol": "b",
+      "tile": 27,
+      "transparent": false
+    },
+    {
+      "id": "clay",
+      "symbol": "c",
+      "tile": 28,
+      "transparent": false
+    },
+    {
+      "id": "moss_block",
+      "symbol": "d",
+      "tile": 29,
+      "transparent": false
+    },
+    {
+      "id": "hay_block",
+      "symbol": "e",
+      "tile": 30,
+      "transparent": false
+    },
+    {
+      "id": "oak_planks",
+      "symbol": "f",
+      "tile": 31,
+      "transparent": false
+    },
+    {
+      "id": "spruce_planks",
+      "symbol": "g",
+      "tile": 32,
+      "transparent": false
+    },
+    {
+      "id": "birch_planks",
+      "symbol": "h",
+      "tile": 33,
+      "transparent": false
+    },
+    {
+      "id": "jungle_planks",
+      "symbol": "i",
+      "tile": 34,
+      "transparent": false
+    },
+    {
+      "id": "acacia_planks",
+      "symbol": "j",
+      "tile": 35,
+      "transparent": false
+    },
+    {
+      "id": "dark_oak_planks",
+      "symbol": "k",
+      "tile": 36,
+      "transparent": false
+    },
+    {
+      "id": "crimson_planks",
+      "symbol": "l",
+      "tile": 37,
+      "transparent": false
+    },
+    {
+      "id": "warped_planks",
+      "symbol": "m",
+      "tile": 38,
+      "transparent": false
+    },
+    {
+      "id": "oak_log",
+      "symbol": "n",
+      "tile": 39,
+      "transparent": false
+    },
+    {
+      "id": "spruce_log",
+      "symbol": "o",
+      "tile": 40,
+      "transparent": false
+    },
+    {
+      "id": "birch_log",
+      "symbol": "p",
+      "tile": 41,
+      "transparent": false
+    },
+    {
+      "id": "dark_oak_log",
+      "symbol": "q",
+      "tile": 42,
+      "transparent": false
+    },
+    {
+      "id": "glass",
+      "symbol": "r",
+      "tile": 43,
+      "transparent": true
+    },
+    {
+      "id": "glowstone",
+      "symbol": "s",
+      "tile": 44,
+      "transparent": false
+    },
+    {
+      "id": "sea_lantern",
+      "symbol": "t",
+      "tile": 45,
+      "transparent": false
+    },
+    {
+      "id": "shroomlight",
+      "symbol": "u",
+      "tile": 46,
+      "transparent": false
+    },
+    {
+      "id": "white_wool",
+      "symbol": "v",
+      "tile": 47,
+      "transparent": false
+    },
+    {
+      "id": "light_gray_wool",
+      "symbol": "w",
+      "tile": 48,
+      "transparent": false
+    },
+    {
+      "id": "gray_wool",
+      "symbol": "x",
+      "tile": 49,
+      "transparent": false
+    },
+    {
+      "id": "black_wool",
+      "symbol": "y",
+      "tile": 50,
+      "transparent": false
+    },
+    {
+      "id": "red_wool",
+      "symbol": "z",
+      "tile": 51,
+      "transparent": false
+    },
+    {
+      "id": "blue_wool",
+      "symbol": "0",
+      "tile": 52,
+      "transparent": false
+    },
+    {
+      "id": "yellow_wool",
+      "symbol": "1",
+      "tile": 53,
+      "transparent": false
+    },
+    {
+      "id": "lime_wool",
+      "symbol": "2",
+      "tile": 54,
+      "transparent": false
+    },
+    {
+      "id": "white_concrete",
+      "symbol": "3",
+      "tile": 55,
+      "transparent": false
+    },
+    {
+      "id": "light_gray_concrete",
+      "symbol": "4",
+      "tile": 56,
+      "transparent": false
+    },
+    {
+      "id": "gray_concrete",
+      "symbol": "5",
+      "tile": 57,
+      "transparent": false
+    },
+    {
+      "id": "black_concrete",
+      "symbol": "6",
+      "tile": 58,
+      "transparent": false
+    },
+    {
+      "id": "red_concrete",
+      "symbol": "7",
+      "tile": 59,
+      "transparent": false
+    },
+    {
+      "id": "blue_concrete",
+      "symbol": "8",
+      "tile": 60,
+      "transparent": false
+    },
+    {
+      "id": "yellow_concrete",
+      "symbol": "9",
+      "tile": 61,
+      "transparent": false
+    },
+    {
+      "id": "lime_concrete",
+      "symbol": "!",
+      "tile": 62,
+      "transparent": false
+    },
+    {
+      "id": "iron_block",
+      "symbol": "?",
+      "tile": 63,
+      "transparent": false
+    },
+    {
+      "id": "gold_block",
+      "symbol": "#",
+      "tile": 64,
+      "transparent": false
+    },
+    {
+      "id": "diamond_block",
+      "symbol": "$",
+      "tile": 65,
+      "transparent": false
+    },
+    {
+      "id": "coal_block",
+      "symbol": "%",
+      "tile": 66,
+      "transparent": false
+    },
+    {
+      "id": "redstone_block",
+      "symbol": "&",
+      "tile": 67,
+      "transparent": false
+    },
+    {
+      "id": "lapis_block",
+      "symbol": "*",
+      "tile": 68,
+      "transparent": false
+    },
+    {
+      "id": "oak_leaves",
+      "symbol": "+",
+      "tile": 69,
+      "transparent": true
+    },
+    {
+      "id": "spruce_leaves",
+      "symbol": "-",
+      "tile": 70,
+      "transparent": true
+    },
+    {
+      "id": "cherry_leaves",
+      "symbol": "=",
+      "tile": 71,
+      "transparent": true
+    },
+    {
+      "id": "terracotta",
+      "symbol": ",",
+      "tile": 72,
+      "transparent": false
+    }
+  ]
+}
