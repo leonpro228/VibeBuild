@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Viewer3D } from "./components/Viewer3D";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { StepsPanel } from "./components/StepsPanel";
 import { demoBuild, materials } from "./lib/build/demo";
+import { buildSteps, type Step } from "./lib/build/instructions";
 import { validateLLMResponse } from "./lib/build/validate";
 import { getSettings, streamCompletion, type ProviderSettings } from "./lib/llm/client";
 import { buildRepairPrompt, buildSystemPrompt, buildUserPrompt } from "./lib/palette/prompt";
@@ -30,6 +32,7 @@ export default function App() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompt, setPrompt] = useState("");
   const [build, setBuild] = useState<Build | null>(null);
+  const [focusY, setFocusY] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -37,6 +40,8 @@ export default function App() {
   const [hasSettings, setHasSettings] = useState<boolean | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const generationId = useRef(0);
+
+  const steps = useMemo<Step[]>(() => (build ? buildSteps(build) : []), [build]);
 
   useEffect(() => {
     getSettings()
@@ -75,6 +80,7 @@ export default function App() {
       const id = ++generationId.current;
       setPrompt(text);
       setBuild(null);
+      setFocusY(null);
       setErrors([]);
       setWarnings([]);
 
@@ -139,6 +145,37 @@ export default function App() {
     }
   }, [generate]);
 
+  // Instruction mode keyboard navigation: layers up/down, Esc = whole build.
+  useEffect(() => {
+    if (phase !== "ready" || steps.length === 0) return;
+    const dirs: Record<string, 1 | -1> = {
+      ArrowRight: 1,
+      ArrowUp: 1,
+      ArrowLeft: -1,
+      ArrowDown: -1,
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFocusY(null);
+        return;
+      }
+      const dir = dirs[e.key];
+      if (!dir) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      setFocusY((cur) => {
+        const i = cur === null ? -1 : steps.findIndex((s) => s.y === cur);
+        if (i < 0) return dir === 1 ? steps[0].y : steps[steps.length - 1].y;
+        return steps[Math.min(steps.length - 1, Math.max(0, i + dir))].y;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, steps]);
+
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-neutral-950 text-neutral-200">
       {/* 3D viewport: mounted in every phase, so it persists through the morph */}
@@ -147,7 +184,7 @@ export default function App() {
           phase === "idle" ? "top-[55%] opacity-0" /* collapsed while idle */ : "top-14 opacity-100"
         }`}
       >
-        <Viewer3D build={build} />
+        <Viewer3D build={build} focusY={focusY} />
       </div>
 
       {/* Top bar (after generation starts) */}
@@ -284,20 +321,23 @@ export default function App() {
         </div>
       )}
 
-      {/* Materials panel */}
+      {/* Right column: instruction steps + materials */}
       {phase === "ready" && build && (
-        <aside className="absolute right-3 top-16 z-10 w-56 rounded-xl border border-white/10 bg-neutral-950/85 p-3 backdrop-blur">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Материалы
+        <aside className="absolute bottom-3 right-3 top-16 z-10 flex w-64 flex-col gap-3">
+          <StepsPanel steps={steps} focusY={focusY} onSelect={setFocusY} />
+          <div className="flex-none rounded-xl border border-white/10 bg-neutral-950/85 p-3 backdrop-blur">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Материалы
+            </div>
+            <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
+              {materials(build).map(({ id, count }) => (
+                <li key={id} className="flex justify-between gap-2">
+                  <span className="truncate text-neutral-300">{id}</span>
+                  <span className="text-neutral-500">{count}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-1 text-sm">
-            {materials(build).map(({ id, count }) => (
-              <li key={id} className="flex justify-between gap-2">
-                <span className="truncate text-neutral-300">{id}</span>
-                <span className="text-neutral-500">{count}</span>
-              </li>
-            ))}
-          </ul>
         </aside>
       )}
 

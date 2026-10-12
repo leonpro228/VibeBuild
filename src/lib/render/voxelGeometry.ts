@@ -42,8 +42,13 @@ export function flattenGrid(build: Build): Map<number, string> {
   return grid;
 }
 
-/** Builds a merged BufferGeometry for one material class of blocks. */
-export function buildGeometry(build: Build, transparentClass: boolean): THREE.BufferGeometry {
+/** Builds a merged BufferGeometry for one material class of blocks.
+ *  `yFilter` (optional) restricts which layers contribute (instruction focus mode). */
+export function buildGeometry(
+  build: Build,
+  transparentClass: boolean,
+  yFilter?: (y: number) => boolean,
+): THREE.BufferGeometry {
   const { width: w, height: h, depth: d } = build.size;
   const grid = flattenGrid(build);
 
@@ -63,6 +68,7 @@ export function buildGeometry(build: Build, transparentClass: boolean): THREE.Bu
     const x = index % w;
     const y = Math.floor(index / (d * w));
     const z = Math.floor((index % (d * w)) / w);
+    if (yFilter && !yFilter(y)) continue;
 
     for (const face of FACES) {
       const [dx, dy, dz] = face.dir;

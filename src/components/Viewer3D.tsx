@@ -2,7 +2,13 @@ import { useEffect, useRef } from "react";
 import { VoxelScene } from "../lib/render/VoxelScene";
 import type { Build } from "../lib/build/types";
 
-export function Viewer3D({ build }: { build: Build | null }) {
+export function Viewer3D({
+  build,
+  focusY = null,
+}: {
+  build: Build | null;
+  focusY?: number | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<VoxelScene | null>(null);
@@ -29,8 +35,8 @@ export function Viewer3D({ build }: { build: Build | null }) {
   }, []);
 
   useEffect(() => {
-    if (build) sceneRef.current?.setBuild(build);
-  }, [build]);
+    if (build) sceneRef.current?.setBuild(build, focusY);
+  }, [build, focusY]);
 
   return (
     <div ref={containerRef} className="absolute inset-0">

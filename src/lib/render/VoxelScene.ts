@@ -10,7 +10,8 @@ export class VoxelScene {
   private camera: THREE.PerspectiveCamera;
   private controls: OrbitControls;
   private group: THREE.Group;
-  private buildTexture: THREE.Texture | null = null;
+  /** Persistent atlas texture — reused across builds (never re-fetched). */
+  private atlasTexture: THREE.Texture;
   private animationId = 0;
   private disposed = false;
 
@@ -32,6 +33,12 @@ export class VoxelScene {
     this.group = new THREE.Group();
     this.scene.add(this.group);
 
+    this.atlasTexture = new THREE.TextureLoader().load(atlasUrl);
+    this.atlasTexture.magFilter = THREE.NearestFilter;
+    this.atlasTexture.minFilter = THREE.NearestFilter;
+    this.atlasTexture.generateMipmaps = false;
+    this.atlasTexture.colorSpace = THREE.SRGBColorSpace;
+
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
@@ -45,31 +52,42 @@ export class VoxelScene {
     loop();
   }
 
-  setBuild(build: Build): void {
+  /**
+   * Shows the build. With `focusY` (instruction mode): the focused layer is
+   * fully lit, layers below it render as ghosts, layers above are hidden —
+   * mimicking the real construction order.
+   */
+  setBuild(build: Build, focusY: number | null = null): void {
     this.clearGroup();
 
-    const opaqueGeo = buildGeometry(build, false);
-    const transparentGeo = buildGeometry(build, true);
-    const texture = new THREE.TextureLoader().load(atlasUrl);
-    this.buildTexture = texture;
-    texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.NearestFilter;
-    texture.generateMipmaps = false;
-    texture.colorSpace = THREE.SRGBColorSpace;
+    const material = (ghost: boolean, alpha: boolean) =>
+      new THREE.MeshLambertMaterial({
+        map: this.atlasTexture,
+        ...(ghost
+          ? { transparent: true, opacity: 0.15, depthWrite: false }
+          : alpha
+            ? { transparent: true, alphaTest: 0.4 }
+            : {}),
+        ...(ghost && alpha ? { alphaTest: 0.4 } : {}),
+      });
+    const addMesh = (geo: THREE.BufferGeometry, mat: THREE.Material) => {
+      this.group.add(new THREE.Mesh(geo, mat));
+    };
 
-    const opaqueMat = new THREE.MeshLambertMaterial({ map: texture });
-    const transparentMat = new THREE.MeshLambertMaterial({
-      map: texture,
-      transparent: true,
-      alphaTest: 0.4,
-    });
+    if (focusY === null) {
+      addMesh(buildGeometry(build, false), material(false, false));
+      addMesh(buildGeometry(build, true), material(false, true));
+    } else {
+      addMesh(buildGeometry(build, false, (y) => y < focusY), material(true, false));
+      addMesh(buildGeometry(build, true, (y) => y < focusY), material(true, true));
+      addMesh(buildGeometry(build, false, (y) => y === focusY), material(false, false));
+      addMesh(buildGeometry(build, true, (y) => y === focusY), material(false, true));
+    }
 
     const { width: w, height: h, depth: d } = build.size;
     this.group.position.set(-w / 2, 0, -d / 2);
-    this.group.add(new THREE.Mesh(opaqueGeo, opaqueMat));
-    this.group.add(new THREE.Mesh(transparentGeo, transparentMat));
 
-    // Frame the camera on the build.
+    // Frame the camera on the whole build (focus does not re-frame).
     const maxDim = Math.max(w, h, d);
     this.controls.target.set(0, h / 2, 0);
     const dir = new THREE.Vector3(1, 0.75, 1.2).normalize();
@@ -91,14 +109,13 @@ export class VoxelScene {
       mat?.dispose();
     });
     this.group.clear();
-    this.buildTexture?.dispose();
-    this.buildTexture = null;
   }
 
   dispose(): void {
     this.disposed = true;
     cancelAnimationFrame(this.animationId);
     this.clearGroup();
+    this.atlasTexture.dispose();
     this.controls.dispose();
     this.renderer.dispose();
   }
