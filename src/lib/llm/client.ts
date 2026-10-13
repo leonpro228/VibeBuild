@@ -1,9 +1,27 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
+/** Structured provider failure from Rust; `kind` drives the UI hint. */
+export interface LlmError {
+  /** "network" | "http" | "protocol" */
+  kind: string;
+  message: string;
+}
+
 export type LlmEvent =
   | { type: "token"; data: string }
   | { type: "done" }
-  | { type: "error"; data: string };
+  | { type: "error"; data: LlmError };
+
+/** Error carrying the structured kind so the UI can pick the right hint. */
+export class StreamError extends Error {
+  readonly kind: string;
+
+  constructor(err: LlmError) {
+    super(err.message);
+    this.name = "StreamError";
+    this.kind = err.kind;
+  }
+}
 
 export type ProviderKind = "openai" | "anthropic";
 
@@ -45,10 +63,20 @@ export function streamCompletion(
           resolve(raw);
           break;
         case "error":
-          reject(new Error(event.data));
+          reject(new StreamError(event.data));
           break;
       }
     };
-    invoke("generate_build", { system, user, onEvent: channel }).catch(reject);
+    // Command-level failure (no settings, broken settings file…): arrives as
+    // a plain string rejection, not through the channel — treat as "config".
+    invoke("generate_build", { system, user, onEvent: channel }).catch((e) => {
+      reject(
+        typeof e === "string"
+          ? new StreamError({ kind: "config", message: e })
+          : e instanceof Error
+            ? new StreamError({ kind: "config", message: e.message })
+            : e,
+      );
+    });
   });
 }

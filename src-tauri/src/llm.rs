@@ -11,7 +11,24 @@ use crate::settings::Settings;
 pub enum LlmEvent {
     Token(String),
     Done,
-    Error(String),
+    Error(LlmError),
+}
+
+/// Structured failure surfaced to the UI: `kind` drives the user-facing hint
+/// (network / http / protocol), `message` carries the technical details.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmError {
+    /// "network" | "http" | "protocol"
+    pub kind: String,
+    pub message: String,
+}
+
+fn llm_err(kind: &str, message: String) -> LlmError {
+    LlmError {
+        kind: kind.to_string(),
+        message,
+    }
 }
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -24,7 +41,7 @@ pub async fn stream_completion(
     system: &str,
     user: &str,
     on_event: Channel<LlmEvent>,
-) -> Result<(), String> {
+) -> Result<(), LlmError> {
     let result = match settings.provider.as_str() {
         "anthropic" => stream_anthropic(settings, system, user, &on_event).await,
         _ => stream_openai(settings, system, user, &on_event).await,
@@ -46,7 +63,7 @@ async fn stream_openai(
     system: &str,
     user: &str,
     on_event: &Channel<LlmEvent>,
-) -> Result<(), String> {
+) -> Result<(), LlmError> {
     let base = if settings.base_url.is_empty() {
         "https://api.openai.com/v1"
     } else {
@@ -72,12 +89,15 @@ async fn stream_openai(
     if !status.is_success() {
         // Include the URL: a wrong/unapplied base_url is the #1 suspect when
         // requests hit the wrong host (region blocks, weird 4xx bodies…).
-        return Err(format!("HTTP {status} от {url}: {}", trim_body(response).await));
+        return Err(llm_err(
+            "http",
+            format!("HTTP {status} от {url}: {}", trim_body(response).await),
+        ));
     }
 
     consume_sse(response, |payload| {
         let v: serde_json::Value = serde_json::from_str(payload)
-            .map_err(|e| format!("битый SSE-кадр от провайдера: {e}"))?;
+            .map_err(|e| llm_err("protocol", format!("битый SSE-кадр от провайдера: {e}")))?;
         if let Some(text) = v["choices"][0]["delta"]["content"].as_str() {
             if !text.is_empty() {
                 let _ = on_event.send(LlmEvent::Token(text.to_string()));
@@ -93,7 +113,7 @@ async fn stream_anthropic(
     system: &str,
     user: &str,
     on_event: &Channel<LlmEvent>,
-) -> Result<(), String> {
+) -> Result<(), LlmError> {
     let base = if settings.base_url.is_empty() {
         "https://api.anthropic.com"
     } else {
@@ -121,12 +141,15 @@ async fn stream_anthropic(
 
     let status = response.status();
     if !status.is_success() {
-        return Err(format!("HTTP {status} от {url}: {}", trim_body(response).await));
+        return Err(llm_err(
+            "http",
+            format!("HTTP {status} от {url}: {}", trim_body(response).await),
+        ));
     }
 
     consume_sse(response, |payload| {
         let v: serde_json::Value = serde_json::from_str(payload)
-            .map_err(|e| format!("битый SSE-кадр от провайдера: {e}"))?;
+            .map_err(|e| llm_err("protocol", format!("битый SSE-кадр от провайдера: {e}")))?;
         if v["type"] == "content_block_delta" && v["delta"]["type"] == "text_delta" {
             if let Some(text) = v["delta"]["text"].as_str() {
                 if !text.is_empty() {
@@ -139,12 +162,14 @@ async fn stream_anthropic(
     .await
 }
 
-fn build_client(settings: &Settings) -> Result<reqwest::Client, String> {
+fn build_client(settings: &Settings) -> Result<reqwest::Client, LlmError> {
     let mut builder = reqwest::Client::builder().user_agent(concat!("vibe-build/", env!("CARGO_PKG_VERSION")));
     if let Some(timeout) = stream_timeout(settings) {
         builder = builder.timeout(timeout);
     }
-    builder.build().map_err(|e| format!("не удалось создать HTTP-клиент: {e}"))
+    builder
+        .build()
+        .map_err(|e| llm_err("network", format!("не удалось создать HTTP-клиент: {e}")))
 }
 
 /// Overall request cap; streaming responses need a generous one.
@@ -152,13 +177,13 @@ fn stream_timeout(_settings: &Settings) -> Option<std::time::Duration> {
     Some(std::time::Duration::from_secs(600))
 }
 
-fn http_error(e: reqwest::Error) -> String {
+fn http_error(e: reqwest::Error) -> LlmError {
     if e.is_connect() {
-        format!("нет соединения с провайдером: {e}")
+        llm_err("network", format!("нет соединения с провайдером: {e}"))
     } else if e.is_timeout() {
-        format!("таймаут запроса: {e}")
+        llm_err("network", format!("таймаут запроса: {e}"))
     } else {
-        format!("ошибка запроса: {e}")
+        llm_err("network", format!("ошибка запроса: {e}"))
     }
 }
 
@@ -170,8 +195,8 @@ async fn trim_body(response: reqwest::Response) -> String {
 /// Reads the SSE stream line by line, invoking `handle` on each `data:` payload.
 async fn consume_sse(
     response: reqwest::Response,
-    mut handle: impl FnMut(&str) -> Result<(), String>,
-) -> Result<(), String> {
+    mut handle: impl FnMut(&str) -> Result<(), LlmError>,
+) -> Result<(), LlmError> {
     let mut stream = response.bytes_stream();
     let mut buffer: Vec<u8> = Vec::new();
 
@@ -209,7 +234,9 @@ pub async fn generate_build(
 ) -> Result<(), String> {
     let settings = crate::settings::load(&app)?
         .ok_or("Провайдер не настроен. Откройте настройки и укажите провайдера и API-ключ.")?;
-    stream_completion(&settings, &system, &user, on_event).await
+    stream_completion(&settings, &system, &user, on_event)
+        .await
+        .map_err(|e| e.message)
 }
 
 #[tauri::command]

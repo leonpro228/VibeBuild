@@ -1,3 +1,4 @@
+mod builds;
 mod llm;
 mod settings;
 
@@ -9,6 +10,10 @@ pub fn run() {
             llm::generate_build,
             llm::get_settings,
             llm::save_settings,
+            builds::save_build,
+            builds::list_builds,
+            builds::load_build,
+            builds::delete_build,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

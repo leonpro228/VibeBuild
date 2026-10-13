@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Viewer3D } from "./components/Viewer3D";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { SavedBuildsDialog } from "./components/SavedBuildsDialog";
 import { StepsPanel } from "./components/StepsPanel";
 import { demoBuild, materials } from "./lib/build/demo";
 import { buildSteps, type Step } from "./lib/build/instructions";
 import { validateLLMResponse } from "./lib/build/validate";
-import { getSettings, streamCompletion, type ProviderSettings } from "./lib/llm/client";
+import { getSettings, streamCompletion, StreamError, type ProviderSettings } from "./lib/llm/client";
 import { buildRepairPrompt, buildSystemPrompt, buildUserPrompt } from "./lib/palette/prompt";
+import { saveBuild, type SavedBuild } from "./lib/storage";
 import type { Build } from "./lib/build/types";
 
 type Phase = "idle" | "generating" | "ready" | "error";
+
+/** One failure to show in the error overlay; `hint` is a plain-language next step. */
+type ErrorItem = { message: string; hint?: string };
 
 const SUGGESTIONS = ["Замок 10×10", "Домик 5×5", "Башня волшебника", "Мост через реку"];
 
@@ -28,16 +33,64 @@ const PRIMARY_BUTTON =
 const INPUT =
   "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
 
+const VALIDATION_HINT =
+  "Модель дважды вернула ответ вне формата. Попробуйте переформулировать запрос или уменьшить постройку.";
+
+/** Plain-language next step for a structured provider failure (kind from Rust). */
+function streamHint(kind: string, message: string): string {
+  if (kind === "http") {
+    const status = /HTTP (\d{3})/.exec(message)?.[1];
+    if (status === "401" || status === "403") {
+      return "Похоже, API-ключ не принят — проверьте ключ и base URL в ⚙ Настройках.";
+    }
+    if (status === "404") {
+      return "Проверьте base URL и название модели в ⚙ Настройках.";
+    }
+    if (status === "429") {
+      return "Лимит запросов провайдера — подождите немного и повторите.";
+    }
+    if (status?.startsWith("5")) {
+      return "Провайдер временно недоступен — повторите позже.";
+    }
+    return "Проверьте настройки провайдера в ⚙ Настройках.";
+  }
+  if (kind === "network") {
+    return "Проверьте подключение к интернету и адрес провайдера в ⚙ Настройках.";
+  }
+  if (kind === "protocol") {
+    return "Провайдер вернул ответ не по протоколу — попробуйте повторить.";
+  }
+  return "Проверьте настройки провайдера в ⚙ Настройках.";
+}
+
+/** clipboard API may be unavailable in some webviews — execCommand fallback. */
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+}
+
 export default function App() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompt, setPrompt] = useState("");
   const [build, setBuild] = useState<Build | null>(null);
   const [focusY, setFocusY] = useState<number | null>(null);
   const [status, setStatus] = useState("");
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState<ErrorItem[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
   const [hasSettings, setHasSettings] = useState<boolean | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const generationId = useRef(0);
 
@@ -121,7 +174,7 @@ export default function App() {
         }
 
         if (!result.ok) {
-          setErrors(result.errors);
+          setErrors(result.errors.map((m) => ({ message: m, hint: VALIDATION_HINT })));
           setPhase("error");
           return;
         }
@@ -131,12 +184,62 @@ export default function App() {
         setPhase("ready");
       } catch (e) {
         if (id !== generationId.current) return;
-        setErrors([e instanceof Error ? e.message : String(e)]);
+        if (e instanceof StreamError) {
+          setErrors([{ message: e.message, hint: streamHint(e.kind, e.message) }]);
+        } else {
+          setErrors([{ message: e instanceof Error ? e.message : String(e) }]);
+        }
         setPhase("error");
       }
     },
     [runDemo, streamOnce],
   );
+
+  /** Saves the current build (Tauri config dir, localStorage in browser dev). */
+  const saveCurrent = useCallback(async () => {
+    if (!build || saveState === "saving") return;
+    setSaveState("saving");
+    try {
+      await saveBuild(build);
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 2000);
+    } catch (e) {
+      setSaveState("idle");
+      const message = e instanceof Error ? e.message : String(e);
+      setNotice(`Не удалось сохранить: ${message}`);
+      setTimeout(() => setNotice(null), 5000);
+    }
+  }, [build, saveState]);
+
+  /** Loads a saved build; cancels any generation still in flight. */
+  const loadSaved = useCallback((saved: SavedBuild) => {
+    if (!saved?.build || !saved.build.size || !Array.isArray(saved.build.layers)) {
+      throw new Error("Файл постройки повреждён");
+    }
+    // Re-run through the normal pipeline: canonical rows are string[][] (the
+    // validator calls that shape "grid"), and this also catches blocks that
+    // dropped out of the palette since the build was saved.
+    const raw = JSON.stringify({
+      name: saved.build.name,
+      size: saved.build.size,
+      layers: saved.build.layers.map(({ y, rows }) => ({ y, grid: rows })),
+    });
+    const result = validateLLMResponse(raw);
+    if (!result.ok) {
+      throw new Error(`Постройка не прошла валидацию: ${result.errors[0]}`);
+    }
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    generationId.current += 1;
+    setSavedOpen(false);
+    setPrompt(result.build.name);
+    setFocusY(null);
+    setErrors([]);
+    setWarnings(result.warnings);
+    setStatus("");
+    setBuild(result.build);
+    setPhase("ready");
+  }, []);
 
   // Dev convenience: /?demo shows the fixture build immediately.
   useEffect(() => {
@@ -211,6 +314,19 @@ export default function App() {
             Построить
           </button>
         </form>
+        {phase === "ready" && build && (
+          <button
+            onClick={saveCurrent}
+            disabled={saveState === "saving"}
+            title="Сохранить постройку"
+            className={GHOST_BUTTON + " shrink-0"}
+          >
+            {saveState === "saving" ? "Сохраняю…" : saveState === "saved" ? "Сохранено ✓" : "💾 Сохранить"}
+          </button>
+        )}
+        <button onClick={() => setSavedOpen(true)} title="Мои постройки" className={GHOST_BUTTON}>
+          📁
+        </button>
         <button onClick={() => setSettingsOpen(true)} title="Настройки провайдера" className={GHOST_BUTTON}>
           ⚙
         </button>
@@ -222,10 +338,15 @@ export default function App() {
           phase === "idle" ? "opacity-100" : "pointer-events-none -translate-y-24 opacity-0"
         }`}
       >
-        {/* Always reachable: settings may be saved but broken (bad key). */}
-        <button onClick={() => setSettingsOpen(true)} title="Настройки провайдера" className={`absolute right-4 top-4 ${GHOST_BUTTON}`}>
-          ⚙ Настроить провайдера
-        </button>
+        <div className="absolute right-4 top-4 flex gap-2">
+          <button onClick={() => setSavedOpen(true)} title="Мои постройки" className={GHOST_BUTTON}>
+            📁 Мои постройки
+          </button>
+          {/* Always reachable: settings may be saved but broken (bad key). */}
+          <button onClick={() => setSettingsOpen(true)} title="Настройки провайдера" className={GHOST_BUTTON}>
+            ⚙ Настроить провайдера
+          </button>
+        </div>
         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">VibeBuild</h1>
         <form
           className="mt-8 w-full max-w-xl"
@@ -285,17 +406,34 @@ export default function App() {
         <div className="absolute inset-0 z-30 flex items-center justify-center p-6">
           <div className="max-w-lg rounded-xl border border-white/15 bg-neutral-900/95 p-5 shadow-2xl shadow-black/60">
             <div className="mb-3 font-semibold text-white">Не получилось построить</div>
-            <ul className="mb-4 max-h-56 space-y-1 overflow-auto text-sm text-neutral-300">
+            <ul className="mb-3 max-h-56 space-y-1 overflow-auto text-sm text-neutral-300">
               {errors.map((e, i) => (
-                <li key={i}>• {e}</li>
+                <li key={i}>• {e.message}</li>
               ))}
             </ul>
+            {/* Plain-language next steps; deduplicated across items. */}
+            {[...new Set(errors.map((e) => e.hint).filter((h): h is string => !!h))].map((hint) => (
+              <p key={hint} className="mb-2 text-xs leading-relaxed text-neutral-500">
+                → {hint}
+              </p>
+            ))}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setPhase("idle")}
                 className="rounded-lg px-4 py-2 text-sm text-neutral-400 transition hover:text-white"
               >
                 Назад
+              </button>
+              <button
+                onClick={() => {
+                  copyText(errors.map((e) => e.message).join("\n")).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  });
+                }}
+                className={GHOST_BUTTON + " px-4 py-2"}
+              >
+                {copied ? "Скопировано ✓" : "Скопировать текст"}
               </button>
               {/* Direct path to fixing a bad API key without leaving the error. */}
               <button
@@ -318,6 +456,13 @@ export default function App() {
           {warnings.map((w, i) => (
             <div key={i}>⚠ {w}</div>
           ))}
+        </div>
+      )}
+
+      {/* Notice toast (e.g. save failure) */}
+      {notice && (
+        <div className="absolute bottom-3 left-3 z-30 max-w-sm rounded-lg border border-white/15 bg-neutral-900/95 px-3 py-2 text-xs text-neutral-200">
+          {notice}
         </div>
       )}
 
@@ -346,6 +491,7 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         onSaved={() => setHasSettings(true)}
       />
+      <SavedBuildsDialog open={savedOpen} onClose={() => setSavedOpen(false)} onLoad={loadSaved} />
     </div>
   );
 }

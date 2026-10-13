@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Monocraft (SIL OFL, committed in-repo) — pixel font with Cyrillic support.
+   The .ttc is the unmodified upstream collection; browsers that don't pick
+   "collection" get the same file hinted as plain truetype, then fall back. */
+@font-face {
+  font-family: "Monocraft";
+  src:
+    url("./assets/fonts/Monocraft.ttc") format("collection"),
+    url("./assets/fonts/Monocraft.ttc") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body,
 #root {
@@ -10,6 +23,6 @@ body {
   margin: 0;
   background: #0a0a0a;
   color-scheme: dark;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Monocraft", ui-monospace, "Cascadia Mono", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
