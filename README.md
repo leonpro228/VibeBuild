@@ -9,7 +9,7 @@
   послойными 2D-сетками, приложение валидирует ответ, рендерит постройку в 3D (Three.js)
   и выдаёт пошаговую инструкцию с материалами для стройки в настоящем Minecraft.
 
-  ![Tauri 2](https://img.shields.io/badge/Tauri-2-24292f) ![React 19](https://img.shields.io/badge/React-19-24292f) ![Three.js](https://img.shields.io/badge/Three.js-0.186-24292f) ![Rust](https://img.shields.io/badge/Rust-reqwest%20%2B%20SSE-24292f) ![тесты](https://img.shields.io/badge/тесты-17%2F17-24292f)
+  ![Tauri 2](https://img.shields.io/badge/Tauri-2-24292f) ![React 19](https://img.shields.io/badge/React-19-24292f) ![Three.js](https://img.shields.io/badge/Three.js-0.186-24292f) ![Rust](https://img.shields.io/badge/Rust-reqwest%20%2B%20SSE-24292f)
 
   <img src="screenshots/главный экран1.png" alt="скриншот главного экрана пнг">
   <img src="screenshots/3dviewport.png" alt="скриншот 3д вьюпорта тоже пнг">
