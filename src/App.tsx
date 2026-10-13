@@ -6,7 +6,7 @@ import { StepsPanel } from "./components/StepsPanel";
 import { demoBuild, materials } from "./lib/build/demo";
 import { buildSteps, type Step } from "./lib/build/instructions";
 import { validateLLMResponse } from "./lib/build/validate";
-import { getSettings, streamCompletion, StreamError, type ProviderSettings } from "./lib/llm/client";
+import { getSettings, streamCompletion, StreamError, CANCELLED, type ProviderSettings } from "./lib/llm/client";
 import { buildRepairPrompt, buildSystemPrompt, buildUserPrompt } from "./lib/palette/prompt";
 import { saveBuild, type SavedBuild } from "./lib/storage";
 import type { Build } from "./lib/build/types";
@@ -93,6 +93,8 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const generationId = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const steps = useMemo<Step[]>(() => (build ? buildSteps(build) : []), [build]);
 
@@ -116,11 +118,23 @@ export default function App() {
   }, []);
 
   const streamOnce = useCallback(
-    async (system: string, user: string, label: string): Promise<string> => {
+    async (
+      system: string,
+      user: string,
+      label: string,
+      signal?: AbortSignal,
+      genId?: number,
+    ): Promise<string> => {
       setStatus(label);
-      return streamCompletion(system, user, (_chunk, total) => {
-        setStatus(`${label} ${total} символов…`);
-      });
+      return streamCompletion(
+        system,
+        user,
+        (_chunk, total) => {
+          setStatus(`${label} ${total} символов…`);
+        },
+        signal,
+        genId,
+      );
     },
     [],
   );
@@ -131,6 +145,11 @@ export default function App() {
       timers.current.forEach(clearTimeout);
       timers.current = [];
       const id = ++generationId.current;
+      // A previous stream (if any) is dropped for real: abort rejects it and
+      // Rust closes the HTTP connection via cancel_generation.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setPrompt(text);
       setBuild(null);
       setFocusY(null);
@@ -159,7 +178,7 @@ export default function App() {
       setPhase("generating");
       try {
         const system = buildSystemPrompt();
-        let raw = await streamOnce(system, buildUserPrompt(text), "Генерирую постройку…");
+        let raw = await streamOnce(system, buildUserPrompt(text), "Генерирую постройку…", controller.signal, id);
         if (id !== generationId.current) return;
 
         setStatus("Проверяю ответ…");
@@ -167,7 +186,7 @@ export default function App() {
         if (!result.ok) {
           // One auto-repair round-trip with precise error feedback.
           setStatus("Исправляю ошибки генерации…");
-          raw = await streamOnce(system, buildRepairPrompt(text, raw, result.errors), "Исправляю…");
+          raw = await streamOnce(system, buildRepairPrompt(text, raw, result.errors), "Исправляю…", controller.signal, id);
           if (id !== generationId.current) return;
           setStatus("Проверяю ответ…");
           result = validateLLMResponse(raw);
@@ -183,6 +202,8 @@ export default function App() {
         setBuild(result.build);
         setPhase("ready");
       } catch (e) {
+        // A stop/supersede is not an error: whoever aborted owns the phase.
+        if (e instanceof StreamError && e.kind === CANCELLED) return;
         if (id !== generationId.current) return;
         if (e instanceof StreamError) {
           setErrors([{ message: e.message, hint: streamHint(e.kind, e.message) }]);
@@ -240,6 +261,34 @@ export default function App() {
     setBuild(result.build);
     setPhase("ready");
   }, []);
+
+  /** Stops the in-flight generation (real Rust-side abort) and goes idle. */
+  const stopGeneration = useCallback(() => {
+    abortRef.current?.abort();
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    generationId.current += 1;
+    setStatus("");
+    setPhase("idle");
+  }, []);
+
+  /** Back to the welcome screen from the viewport. */
+  const goHome = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    generationId.current += 1;
+    setFocusY(null);
+    setStatus("");
+    setPhase("idle");
+  }, []);
+
+  // Welcome prompt: the textarea grows with its content (multi-line prompts).
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (phase !== "idle" || !ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [prompt, phase]);
 
   // Dev convenience: /?demo shows the fixture build immediately.
   useEffect(() => {
@@ -356,12 +405,21 @@ export default function App() {
           }}
         >
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 shadow-2xl shadow-black/60 transition focus-within:border-white/40">
-            <input
+            <textarea
+              ref={textareaRef}
+              rows={1}
               value={prompt}
               onChange={(e) => setPrompt(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                // Enter sends, Shift+Enter makes a new line.
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  generate(prompt);
+                }
+              }}
               placeholder="Построй замок 10×10…"
               autoFocus
-              className="w-full bg-transparent px-3 py-2 outline-none placeholder:text-neutral-500"
+              className="max-h-40 w-full resize-none overflow-y-auto bg-transparent px-3 py-2 outline-none placeholder:text-neutral-500"
             />
             <button
               type="submit"
@@ -391,14 +449,30 @@ export default function App() {
         </form>
       </div>
 
-      {/* Generation status overlay */}
+      {/* Generation status overlay with a way out */}
       {phase === "generating" && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3">
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-neutral-950/90 px-5 py-3 text-sm text-neutral-300">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
             {status || "Работаю…"}
           </div>
+          <button
+            onClick={stopGeneration}
+            className="rounded-lg border border-white/40 bg-neutral-950/90 px-4 py-2 text-sm text-neutral-200 backdrop-blur transition hover:bg-neutral-900"
+          >
+            ⏹ Остановить
+          </button>
         </div>
+      )}
+
+      {/* Back to the welcome screen */}
+      {phase === "ready" && (
+        <button
+          onClick={goHome}
+          className="absolute left-3 top-16 z-20 rounded-lg border border-white/40 bg-neutral-950/70 px-2.5 py-1.5 text-sm text-white backdrop-blur transition hover:bg-neutral-900"
+        >
+          ← Назад
+        </button>
       )}
 
       {/* Error overlay (validation or provider failure) */}

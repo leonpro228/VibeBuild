@@ -1,6 +1,9 @@
+use futures_util::future::{abortable, AbortHandle, Aborted};
 use futures_util::StreamExt;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
+use std::sync::Mutex;
 use tauri::ipc::Channel;
 
 use crate::settings::Settings;
@@ -34,6 +37,28 @@ fn llm_err(kind: &str, message: String) -> LlmError {
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Enough headroom for a 24×24×24 build in symbol rows (~20k tokens).
 const ANTHROPIC_MAX_TOKENS: u32 = 16000;
+
+/// In-flight generations, keyed by the frontend's generation id. Aborting
+/// drops the stream future — reqwest closes the HTTP connection, so the
+/// provider stops generating (no wasted tokens).
+#[derive(Default)]
+pub struct CancelRegistry(Mutex<HashMap<u32, AbortHandle>>);
+
+impl CancelRegistry {
+    fn register(&self, gen_id: u32, handle: AbortHandle) {
+        self.0.lock().unwrap().insert(gen_id, handle);
+    }
+
+    fn unregister(&self, gen_id: u32) {
+        self.0.lock().unwrap().remove(&gen_id);
+    }
+
+    fn cancel(&self, gen_id: u32) {
+        if let Some(handle) = self.0.lock().unwrap().get(&gen_id) {
+            handle.abort();
+        }
+    }
+}
 
 /// Sends one completion request and streams tokens into `on_event`.
 pub async fn stream_completion(
@@ -225,18 +250,36 @@ async fn consume_sse(
 }
 
 /// Command invoked by the frontend. `on_event` is a Tauri Channel.
+/// `gen_id` lets the UI stop this request via `cancel_generation`.
 #[tauri::command]
 pub async fn generate_build(
     app: tauri::AppHandle,
+    gen_id: u32,
     system: String,
     user: String,
     on_event: Channel<LlmEvent>,
+    registry: tauri::State<'_, CancelRegistry>,
 ) -> Result<(), String> {
     let settings = crate::settings::load(&app)?
         .ok_or("Провайдер не настроен. Откройте настройки и укажите провайдера и API-ключ.")?;
-    stream_completion(&settings, &system, &user, on_event)
-        .await
-        .map_err(|e| e.message)
+    let (abortable, handle) = abortable(stream_completion(&settings, &system, &user, on_event));
+    registry.register(gen_id, handle);
+    let result = abortable.await;
+    registry.unregister(gen_id);
+    match result {
+        Ok(inner) => inner.map_err(|e| e.message),
+        Err(Aborted) => Err("Генерация остановлена".to_string()),
+    }
+}
+
+/// Stops one in-flight generation. Unknown/finished ids are a no-op.
+#[tauri::command]
+pub fn cancel_generation(
+    registry: tauri::State<'_, CancelRegistry>,
+    gen_id: u32,
+) -> Result<(), String> {
+    registry.cancel(gen_id);
+    Ok(())
 }
 
 #[tauri::command]

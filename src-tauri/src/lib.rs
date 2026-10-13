@@ -6,10 +6,12 @@ mod settings;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(llm::CancelRegistry::default())
         .invoke_handler(tauri::generate_handler![
             llm::generate_build,
             llm::get_settings,
             llm::save_settings,
+            llm::cancel_generation,
             builds::save_build,
             builds::list_builds,
             builds::load_build,

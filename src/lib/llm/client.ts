@@ -41,41 +41,67 @@ export function saveSettings(settings: ProviderSettings): Promise<void> {
   return invoke("save_settings", { settings });
 }
 
+/** Error kind the UI understands as "user stopped the generation". */
+export const CANCELLED = "cancelled";
+
 /**
  * Streams one LLM completion. Resolves with the full raw text on success,
- * rejects with an error message on failure.
+ * rejects with a StreamError on failure. Aborting `signal` rejects with
+ * kind "cancelled" and asks Rust to drop the stream (gen_id → registry);
+ * events arriving after settle/close are ignored.
  */
 export function streamCompletion(
   system: string,
   user: string,
   onToken?: (chunk: string, totalLength: number) => void,
+  signal?: AbortSignal,
+  genId?: number,
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     let raw = "";
+    let closed = false;
     const channel = new Channel<LlmEvent>();
+
+    const finish = (settle: () => void) => {
+      if (closed) return;
+      closed = true;
+      signal?.removeEventListener("abort", onAbort);
+      settle();
+    };
+
+    const onAbort = () => {
+      finish(() => reject(new StreamError({ kind: CANCELLED, message: "Генерация остановлена" })));
+      // Fire-and-forget: Rust drops the HTTP stream for this gen_id.
+      if (genId !== undefined) invoke("cancel_generation", { genId }).catch(() => {});
+    };
+    signal?.addEventListener("abort", onAbort);
+
     channel.onmessage = (event) => {
+      if (closed) return; // cancelled or superseded — ignore stale events
       switch (event.type) {
         case "token":
           raw += event.data;
           onToken?.(event.data, raw.length);
           break;
         case "done":
-          resolve(raw);
+          finish(() => resolve(raw));
           break;
         case "error":
-          reject(new StreamError(event.data));
+          finish(() => reject(new StreamError(event.data)));
           break;
       }
     };
     // Command-level failure (no settings, broken settings file…): arrives as
     // a plain string rejection, not through the channel — treat as "config".
-    invoke("generate_build", { system, user, onEvent: channel }).catch((e) => {
-      reject(
-        typeof e === "string"
-          ? new StreamError({ kind: "config", message: e })
-          : e instanceof Error
-            ? new StreamError({ kind: "config", message: e.message })
-            : e,
+    invoke("generate_build", { genId, system, user, onEvent: channel }).catch((e) => {
+      finish(() =>
+        reject(
+          typeof e === "string"
+            ? new StreamError({ kind: "config", message: e })
+            : e instanceof Error
+              ? new StreamError({ kind: "config", message: e.message })
+              : e,
+        ),
       );
     });
   });
