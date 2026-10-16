@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Build } from "./build/types";
+import { getDict } from "./i18n";
 
 export interface SavedBuildMeta {
   id: string;
@@ -58,7 +59,7 @@ export async function saveBuild(build: Build): Promise<SavedBuildMeta> {
   if (isTauri()) {
     return invoke<SavedBuildMeta>("save_build", { build });
   }
-  const name = build.name.trim() || "Без названия";
+  const name = build.name.trim() || getDict().untitled;
   const entry: LsEntry = {
     id: lsUnique(slugify(name)),
     name,
@@ -85,7 +86,7 @@ export async function loadBuild(id: string): Promise<SavedBuild> {
     return invoke<SavedBuild>("load_build", { id });
   }
   const entry = lsRead().find((e) => e.id === id);
-  if (!entry) throw new Error("Постройка не найдена");
+  if (!entry) throw new Error(getDict().notFound);
   return entry;
 }
 

@@ -21,13 +21,20 @@ pub struct Settings {
     pub model: String,
     #[serde(default, alias = "api_key")]
     pub api_key: String,
+    /// UI language: "ru" | "en" (first field of the settings dialog).
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "ru".to_string()
 }
 
 fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_config_dir()
-        .map_err(|e| format!("не удалось определить каталог конфигурации: {e}"))?;
+        .map_err(|e| format!("failed to resolve the config directory: {e}"))?;
     Ok(dir.join("settings.json"))
 }
 
@@ -36,14 +43,14 @@ pub fn load(app: &tauri::AppHandle) -> Result<Option<Settings>, String> {
     if !path.exists() {
         return Ok(None);
     }
-    let raw = fs::read_to_string(&path).map_err(|e| format!("не удалось прочитать настройки: {e}"))?;
-    serde_json::from_str(&raw).map(Some).map_err(|e| format!("настройки повреждены: {e}"))
+    let raw = fs::read_to_string(&path).map_err(|e| format!("failed to read settings: {e}"))?;
+    serde_json::from_str(&raw).map(Some).map_err(|e| format!("settings file is corrupted: {e}"))
 }
 
 pub fn save(app: &tauri::AppHandle, settings: &Settings) -> Result<(), String> {
     let path = settings_path(app)?;
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("не удалось создать каталог конфигурации: {e}"))?;
+        fs::create_dir_all(parent).map_err(|e| format!("failed to create the config directory: {e}"))?;
     }
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     #[cfg(unix)]
@@ -56,7 +63,7 @@ pub fn save(app: &tauri::AppHandle, settings: &Settings) -> Result<(), String> {
             .truncate(true)
             .mode(0o600)
             .open(&path)
-            .map_err(|e| format!("не удалось записать настройки: {e}"))?;
+            .map_err(|e| format!("failed to write settings: {e}"))?;
         file.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
     }
     #[cfg(not(unix))]

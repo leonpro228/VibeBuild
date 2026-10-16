@@ -57,7 +57,7 @@ fn builds_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_config_dir()
-        .map_err(|e| format!("не удалось определить каталог конфигурации: {e}"))?;
+        .map_err(|e| format!("failed to resolve the config directory: {e}"))?;
     Ok(dir.join("builds"))
 }
 
@@ -97,7 +97,7 @@ fn safe_id(id: &str) -> Result<String, String> {
     if ok {
         Ok(id.to_string())
     } else {
-        Err(format!("некорректный идентификатор постройки: {id:?}"))
+        Err(format!("invalid build id: {id:?}"))
     }
 }
 
@@ -118,25 +118,25 @@ pub fn save_build(app: tauri::AppHandle, build: serde_json::Value) -> Result<Sav
         .and_then(|v| v.as_str())
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .unwrap_or("Без названия")
+        .unwrap_or("Untitled")
         .to_string();
     let size: BuildSize = serde_json::from_value(
         build
             .get("size")
             .cloned()
-            .ok_or("в постройке нет size")?,
+            .ok_or("the build has no size")?,
     )
-    .map_err(|e| format!("некорректный size: {e}"))?;
+    .map_err(|e| format!("invalid size: {e}"))?;
     let layers = build
         .get("layers")
         .and_then(|v| v.as_array())
-        .ok_or("в постройке нет layers")?;
+        .ok_or("the build has no layers")?;
     if layers.is_empty() {
-        return Err("в постройке нет ни одного слоя".to_string());
+        return Err("the build has no layers at all".to_string());
     }
 
     let dir = builds_dir(&app)?;
-    fs::create_dir_all(&dir).map_err(|e| format!("не удалось создать каталог построек: {e}"))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("failed to create the builds directory: {e}"))?;
     let id = unique_id(&dir, &slugify(&name));
     let saved = SavedBuild {
         id,
@@ -147,7 +147,7 @@ pub fn save_build(app: tauri::AppHandle, build: serde_json::Value) -> Result<Sav
     };
     let path = dir.join(format!("{}.json", saved.id));
     let json = serde_json::to_string_pretty(&saved).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| format!("не удалось записать постройку: {e}"))?;
+    fs::write(&path, json).map_err(|e| format!("failed to write the build: {e}"))?;
     Ok(saved.meta())
 }
 
@@ -158,7 +158,7 @@ pub fn list_builds(app: tauri::AppHandle) -> Result<Vec<SavedBuildMeta>, String>
         return Ok(Vec::new());
     }
     let entries =
-        fs::read_dir(&dir).map_err(|e| format!("не удалось прочитать каталог построек: {e}"))?;
+        fs::read_dir(&dir).map_err(|e| format!("failed to read the builds directory: {e}"))?;
     let mut metas = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
@@ -179,8 +179,8 @@ pub fn load_build(app: tauri::AppHandle, id: String) -> Result<SavedBuild, Strin
     let id = safe_id(&id)?;
     let path = builds_dir(&app)?.join(format!("{id}.json"));
     let raw =
-        fs::read_to_string(&path).map_err(|e| format!("не удалось прочитать постройку: {e}"))?;
-    serde_json::from_str(&raw).map_err(|e| format!("постройка повреждена: {e}"))
+        fs::read_to_string(&path).map_err(|e| format!("failed to read the build: {e}"))?;
+    serde_json::from_str(&raw).map_err(|e| format!("build file is corrupted: {e}"))
 }
 
 #[tauri::command]
@@ -188,7 +188,7 @@ pub fn delete_build(app: tauri::AppHandle, id: String) -> Result<(), String> {
     let id = safe_id(&id)?;
     let path = builds_dir(&app)?.join(format!("{id}.json"));
     if path.exists() {
-        fs::remove_file(&path).map_err(|e| format!("не удалось удалить постройку: {e}"))?;
+        fs::remove_file(&path).map_err(|e| format!("failed to delete the build: {e}"))?;
     }
     Ok(())
 }

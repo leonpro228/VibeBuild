@@ -6,12 +6,14 @@ import {
   type SavedBuild,
   type SavedBuildMeta,
 } from "../lib/storage";
+import { format } from "../lib/i18n";
+import { useLang } from "../lib/useLang";
 
 const GHOST_SMALL =
   "rounded-lg border border-white/10 px-2 py-1 text-xs text-neutral-400 transition hover:border-white/40 hover:text-white";
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleString("ru-RU", {
+function formatDate(ms: number, lang: string): string {
+  return new Date(ms).toLocaleString(lang === "ru" ? "ru-RU" : "en-US", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -28,6 +30,7 @@ export function SavedBuildsDialog({
   onClose: () => void;
   onLoad: (saved: SavedBuild) => void;
 }) {
+  const { lang, L } = useLang();
   const [items, setItems] = useState<SavedBuildMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export function SavedBuildsDialog({
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Удалить постройку «${name}»?`)) return;
+    if (!window.confirm(format(L.confirmDelete, { name }))) return;
     setBusyId(id);
     setError(null);
     try {
@@ -75,7 +78,7 @@ export function SavedBuildsDialog({
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl shadow-black/60">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Мои постройки</h2>
+          <h2 className="text-lg font-semibold text-white">{L.myBuildsTitle}</h2>
           <button onClick={onClose} className="text-neutral-500 transition hover:text-white">
             ✕
           </button>
@@ -84,11 +87,9 @@ export function SavedBuildsDialog({
         {error && <p className="mb-3 text-sm text-neutral-200">⚠ {error}</p>}
 
         {loading ? (
-          <p className="py-6 text-center text-sm text-neutral-500">Загружаю…</p>
+          <p className="py-6 text-center text-sm text-neutral-500">{L.loading}</p>
         ) : items.length === 0 ? (
-          <p className="py-6 text-center text-sm text-neutral-500">
-            Пока нет сохранённых построек. Сгенерируйте постройку и нажмите «Сохранить».
-          </p>
+          <p className="py-6 text-center text-sm text-neutral-500">{L.savedEmpty}</p>
         ) : (
           <ul className="mb-1 max-h-80 space-y-2 overflow-y-auto pr-1">
             {items.map((m) => (
@@ -101,7 +102,7 @@ export function SavedBuildsDialog({
                     {m.name}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {m.size.width}×{m.size.height}×{m.size.depth} · {formatDate(m.savedAt)}
+                    {m.size.width}×{m.size.height}×{m.size.depth} · {formatDate(m.savedAt, lang)}
                   </div>
                 </div>
                 <button
@@ -109,12 +110,12 @@ export function SavedBuildsDialog({
                   disabled={busyId === m.id}
                   className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-neutral-950 transition hover:bg-neutral-300 disabled:opacity-50"
                 >
-                  {busyId === m.id ? "…" : "Открыть"}
+                  {busyId === m.id ? "…" : L.open}
                 </button>
                 <button
                   onClick={() => handleDelete(m.id, m.name)}
                   disabled={busyId === m.id}
-                  title="Удалить"
+                  title={L.deleteTitle}
                   className={GHOST_SMALL}
                 >
                   🗑

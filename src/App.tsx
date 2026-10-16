@@ -5,26 +5,22 @@ import { SavedBuildsDialog } from "./components/SavedBuildsDialog";
 import { StepsPanel } from "./components/StepsPanel";
 import { demoBuild, materials } from "./lib/build/demo";
 import { buildSteps, type Step } from "./lib/build/instructions";
-import { validateLLMResponse } from "./lib/build/validate";
+import { formatDiag, validateLLMResponse, type Diag } from "./lib/build/validate";
 import { getSettings, streamCompletion, StreamError, CANCELLED, type ProviderSettings } from "./lib/llm/client";
 import { buildRepairPrompt, buildSystemPrompt, buildUserPrompt } from "./lib/palette/prompt";
 import { saveBuild, type SavedBuild } from "./lib/storage";
+import { format, getDict, getLang, setLang } from "./lib/i18n";
+import { useLang } from "./lib/useLang";
 import type { Build } from "./lib/build/types";
 
 type Phase = "idle" | "generating" | "ready" | "error";
 
-/** One failure to show in the error overlay; `hint` is a plain-language next step. */
-type ErrorItem = { message: string; hint?: string };
-
-const SUGGESTIONS = ["Замок 10×10", "Домик 5×5", "Башня волшебника", "Мост через реку"];
-
-const DEMO_STEPS = [
-  "Демо-режим (LLM не настроен)",
-  "Разбираю запрос…",
-  "Планирую структуру…",
-  "Генерирую слои…",
-  "Собираю сцену…",
-];
+/**
+ * One failure to show in the error overlay. Validation failures carry a
+ * structured `diag` (formatted at render time, so a live language switch
+ * re-translates them); anything else carries a ready `message`.
+ */
+type ErrorItem = { diag?: Diag; message?: string; hint?: string };
 
 const GHOST_BUTTON =
   "rounded-lg border border-white/10 px-2.5 py-1.5 text-sm text-neutral-400 transition hover:border-white/40 hover:text-white";
@@ -33,34 +29,32 @@ const PRIMARY_BUTTON =
 const INPUT =
   "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none placeholder:text-neutral-500 focus:border-white/40";
 
-const VALIDATION_HINT =
-  "Модель дважды вернула ответ вне формата. Попробуйте переформулировать запрос или уменьшить постройку.";
-
 /** Plain-language next step for a structured provider failure (kind from Rust). */
 function streamHint(kind: string, message: string): string {
+  const L = getDict();
   if (kind === "http") {
     const status = /HTTP (\d{3})/.exec(message)?.[1];
     if (status === "401" || status === "403") {
-      return "Похоже, API-ключ не принят — проверьте ключ и base URL в ⚙ Настройках.";
+      return L.hint401;
     }
     if (status === "404") {
-      return "Проверьте base URL и название модели в ⚙ Настройках.";
+      return L.hint404;
     }
     if (status === "429") {
-      return "Лимит запросов провайдера — подождите немного и повторите.";
+      return L.hint429;
     }
     if (status?.startsWith("5")) {
-      return "Провайдер временно недоступен — повторите позже.";
+      return L.hint5xx;
     }
-    return "Проверьте настройки провайдера в ⚙ Настройках.";
+    return L.hintHttp;
   }
   if (kind === "network") {
-    return "Проверьте подключение к интернету и адрес провайдера в ⚙ Настройках.";
+    return L.hintNetwork;
   }
   if (kind === "protocol") {
-    return "Провайдер вернул ответ не по протоколу — попробуйте повторить.";
+    return L.hintProtocol;
   }
-  return "Проверьте настройки провайдера в ⚙ Настройках.";
+  return L.hintHttp;
 }
 
 /** clipboard API may be unavailable in some webviews — execCommand fallback. */
@@ -78,13 +72,14 @@ async function copyText(text: string): Promise<void> {
 }
 
 export default function App() {
+  const { lang, L } = useLang();
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompt, setPrompt] = useState("");
   const [build, setBuild] = useState<Build | null>(null);
   const [focusY, setFocusY] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState<ErrorItem[]>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [warnings, setWarnings] = useState<Diag[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [hasSettings, setHasSettings] = useState<boolean | null>(null);
@@ -98,14 +93,20 @@ export default function App() {
 
   const steps = useMemo<Step[]>(() => (build ? buildSteps(build) : []), [build]);
 
+  // Adopt the persisted UI language as soon as settings arrive (settings.json
+  // is the source of truth; localStorage only covers plain-browser dev).
   useEffect(() => {
     getSettings()
-      .then((s) => setHasSettings(!!s))
+      .then((s) => {
+        setHasSettings(!!s);
+        if (s && (s.language === "ru" || s.language === "en")) setLang(s.language);
+      })
       .catch(() => setHasSettings(false)); // not in Tauri (plain browser dev)
   }, []);
 
   const runDemo = useCallback((text: string) => {
-    DEMO_STEPS.forEach((step, i) => {
+    const demoSteps = getDict().demoSteps;
+    demoSteps.forEach((step, i) => {
       timers.current.push(setTimeout(() => setStatus(step), 300 + i * 500));
     });
     timers.current.push(
@@ -113,7 +114,7 @@ export default function App() {
         setStatus("");
         setBuild({ ...demoBuild, name: text.trim() });
         setPhase("ready");
-      }, 300 + DEMO_STEPS.length * 500),
+      }, 300 + demoSteps.length * 500),
     );
   }, []);
 
@@ -130,7 +131,7 @@ export default function App() {
         system,
         user,
         (_chunk, total) => {
-          setStatus(`${label} ${total} символов…`);
+          setStatus(format(getDict().chars, { label, n: total }));
         },
         signal,
         genId,
@@ -142,6 +143,8 @@ export default function App() {
   const generate = useCallback(
     async (text: string, instantDemo = false) => {
       if (!text.trim()) return;
+      const L = getDict();
+      const lang = getLang();
       timers.current.forEach(clearTimeout);
       timers.current = [];
       const id = ++generationId.current;
@@ -178,22 +181,29 @@ export default function App() {
       setPhase("generating");
       try {
         const system = buildSystemPrompt();
-        let raw = await streamOnce(system, buildUserPrompt(text), "Генерирую постройку…", controller.signal, id);
+        let raw = await streamOnce(system, buildUserPrompt(text), L.generating, controller.signal, id);
         if (id !== generationId.current) return;
 
-        setStatus("Проверяю ответ…");
-        let result = validateLLMResponse(raw);
+        setStatus(L.checking);
+        let result = validateLLMResponse(raw, lang);
         if (!result.ok) {
-          // One auto-repair round-trip with precise error feedback.
-          setStatus("Исправляю ошибки генерации…");
-          raw = await streamOnce(system, buildRepairPrompt(text, raw, result.errors), "Исправляю…", controller.signal, id);
+          // One auto-repair round-trip with precise error feedback. The repair
+          // prompt is always English — diagnostics are formatted accordingly.
+          setStatus(L.repairing);
+          raw = await streamOnce(
+            system,
+            buildRepairPrompt(text, raw, result.errors.map((e) => formatDiag(e, "en"))),
+            L.repairingShort,
+            controller.signal,
+            id,
+          );
           if (id !== generationId.current) return;
-          setStatus("Проверяю ответ…");
-          result = validateLLMResponse(raw);
+          setStatus(L.checking);
+          result = validateLLMResponse(raw, lang);
         }
 
         if (!result.ok) {
-          setErrors(result.errors.map((m) => ({ message: m, hint: VALIDATION_HINT })));
+          setErrors(result.errors.map((diag) => ({ diag, hint: L.validationHint })));
           setPhase("error");
           return;
         }
@@ -227,15 +237,17 @@ export default function App() {
     } catch (e) {
       setSaveState("idle");
       const message = e instanceof Error ? e.message : String(e);
-      setNotice(`Не удалось сохранить: ${message}`);
+      setNotice(format(getDict().saveFailed, { message }));
       setTimeout(() => setNotice(null), 5000);
     }
   }, [build, saveState]);
 
   /** Loads a saved build; cancels any generation still in flight. */
   const loadSaved = useCallback((saved: SavedBuild) => {
+    const L = getDict();
+    const lang = getLang();
     if (!saved?.build || !saved.build.size || !Array.isArray(saved.build.layers)) {
-      throw new Error("Файл постройки повреждён");
+      throw new Error(L.corruptedFile);
     }
     // Re-run through the normal pipeline: canonical rows are string[][] (the
     // validator calls that shape "grid"), and this also catches blocks that
@@ -245,9 +257,9 @@ export default function App() {
       size: saved.build.size,
       layers: saved.build.layers.map(({ y, rows }) => ({ y, grid: rows })),
     });
-    const result = validateLLMResponse(raw);
+    const result = validateLLMResponse(raw, lang);
     if (!result.ok) {
-      throw new Error(`Постройка не прошла валидацию: ${result.errors[0]}`);
+      throw new Error(format(L.invalidSaved, { error: formatDiag(result.errors[0], lang) }));
     }
     timers.current.forEach(clearTimeout);
     timers.current = [];
@@ -293,7 +305,7 @@ export default function App() {
   // Dev convenience: /?demo shows the fixture build immediately.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("demo")) {
-      generate("Домик 5×5", true);
+      generate(getDict().demoPrompt, true);
     }
   }, [generate]);
 
@@ -328,6 +340,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [phase, steps]);
 
+  const errorText = (e: ErrorItem) => (e.diag ? formatDiag(e.diag, lang) : (e.message ?? ""));
+
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-neutral-950 text-neutral-200">
       {/* 3D viewport: mounted in every phase, so it persists through the morph */}
@@ -356,27 +370,27 @@ export default function App() {
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.currentTarget.value)}
-            placeholder="Опиши постройку…"
+            placeholder={L.placeholderTop}
             className={INPUT}
           />
           <button type="submit" className={PRIMARY_BUTTON}>
-            Построить
+            {L.buildButton}
           </button>
         </form>
         {phase === "ready" && build && (
           <button
             onClick={saveCurrent}
             disabled={saveState === "saving"}
-            title="Сохранить постройку"
+            title={L.saveTitle}
             className={GHOST_BUTTON + " shrink-0"}
           >
-            {saveState === "saving" ? "Сохраняю…" : saveState === "saved" ? "Сохранено ✓" : "💾 Сохранить"}
+            {saveState === "saving" ? L.saving : saveState === "saved" ? L.saved : L.save}
           </button>
         )}
-        <button onClick={() => setSavedOpen(true)} title="Мои постройки" className={GHOST_BUTTON}>
+        <button onClick={() => setSavedOpen(true)} title={L.myBuildsTitle} className={GHOST_BUTTON}>
           📁
         </button>
-        <button onClick={() => setSettingsOpen(true)} title="Настройки провайдера" className={GHOST_BUTTON}>
+        <button onClick={() => setSettingsOpen(true)} title={L.settingsTitle} className={GHOST_BUTTON}>
           ⚙
         </button>
       </header>
@@ -388,12 +402,12 @@ export default function App() {
         }`}
       >
         <div className="absolute right-4 top-4 flex gap-2">
-          <button onClick={() => setSavedOpen(true)} title="Мои постройки" className={GHOST_BUTTON}>
-            📁 Мои постройки
+          <button onClick={() => setSavedOpen(true)} title={L.myBuildsTitle} className={GHOST_BUTTON}>
+            {L.myBuildsButton}
           </button>
           {/* Always reachable: settings may be saved but broken (bad key). */}
-          <button onClick={() => setSettingsOpen(true)} title="Настройки провайдера" className={GHOST_BUTTON}>
-            ⚙ Настроить провайдера
+          <button onClick={() => setSettingsOpen(true)} title={L.settingsTitle} className={GHOST_BUTTON}>
+            {L.setupProvider}
           </button>
         </div>
         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">VibeBuild</h1>
@@ -417,7 +431,7 @@ export default function App() {
                   generate(prompt);
                 }
               }}
-              placeholder="Построй замок 10×10…"
+              placeholder={L.placeholderWelcome}
               autoFocus
               className="max-h-40 w-full resize-none overflow-y-auto bg-transparent px-3 py-2 outline-none placeholder:text-neutral-500"
             />
@@ -425,11 +439,11 @@ export default function App() {
               type="submit"
               className="shrink-0 rounded-xl bg-white px-5 py-2.5 font-medium text-neutral-950 transition hover:bg-neutral-300"
             >
-              Построить
+              {L.buildButton}
             </button>
           </div>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {SUGGESTIONS.map((s) => (
+            {L.suggestions.map((s) => (
               <button
                 key={s}
                 type="button"
@@ -442,8 +456,9 @@ export default function App() {
           </div>
           {hasSettings === false && (
             <p className="mt-4 text-center text-xs text-neutral-500">
-              Демо-режим: запусти приложение через <code>yarn tauri dev</code> и настрой
-              провайдера в ⚙, чтобы генерировать настоящие постройки.
+              {L.demoHintBefore}
+              <code>yarn tauri dev</code>
+              {L.demoHintAfter}
             </p>
           )}
         </form>
@@ -454,13 +469,13 @@ export default function App() {
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3">
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-neutral-950/90 px-5 py-3 text-sm text-neutral-300">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            {status || "Работаю…"}
+            {status || L.working}
           </div>
           <button
             onClick={stopGeneration}
             className="rounded-lg border border-white/40 bg-neutral-950/90 px-4 py-2 text-sm text-neutral-200 backdrop-blur transition hover:bg-neutral-900"
           >
-            ⏹ Остановить
+            {L.stop}
           </button>
         </div>
       )}
@@ -471,7 +486,7 @@ export default function App() {
           onClick={goHome}
           className="absolute left-3 top-16 z-20 rounded-lg border border-white/40 bg-neutral-950/70 px-2.5 py-1.5 text-sm text-white backdrop-blur transition hover:bg-neutral-900"
         >
-          ← Назад
+          {L.back}
         </button>
       )}
 
@@ -479,10 +494,10 @@ export default function App() {
       {phase === "error" && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-6">
           <div className="max-w-lg rounded-xl border border-white/15 bg-neutral-900/95 p-5 shadow-2xl shadow-black/60">
-            <div className="mb-3 font-semibold text-white">Не получилось построить</div>
+            <div className="mb-3 font-semibold text-white">{L.errorTitle}</div>
             <ul className="mb-3 max-h-56 space-y-1 overflow-auto text-sm text-neutral-300">
               {errors.map((e, i) => (
-                <li key={i}>• {e.message}</li>
+                <li key={i}>• {errorText(e)}</li>
               ))}
             </ul>
             {/* Plain-language next steps; deduplicated across items. */}
@@ -496,28 +511,28 @@ export default function App() {
                 onClick={() => setPhase("idle")}
                 className="rounded-lg px-4 py-2 text-sm text-neutral-400 transition hover:text-white"
               >
-                Назад
+                {L.backShort}
               </button>
               <button
                 onClick={() => {
-                  copyText(errors.map((e) => e.message).join("\n")).then(() => {
+                  copyText(errors.map(errorText).join("\n")).then(() => {
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   });
                 }}
                 className={GHOST_BUTTON + " px-4 py-2"}
               >
-                {copied ? "Скопировано ✓" : "Скопировать текст"}
+                {copied ? L.copied : L.copy}
               </button>
               {/* Direct path to fixing a bad API key without leaving the error. */}
               <button
                 onClick={() => setSettingsOpen(true)}
                 className={GHOST_BUTTON + " px-4 py-2"}
               >
-                ⚙ Настройки
+                {L.settingsButton}
               </button>
               <button onClick={() => generate(prompt)} className={PRIMARY_BUTTON + " py-2"}>
-                Попробовать снова
+                {L.tryAgain}
               </button>
             </div>
           </div>
@@ -528,7 +543,7 @@ export default function App() {
       {phase === "ready" && warnings.length > 0 && (
         <div className="absolute bottom-3 left-3 z-10 max-w-sm rounded-lg border border-white/10 bg-neutral-900/90 px-3 py-2 text-xs text-neutral-400">
           {warnings.map((w, i) => (
-            <div key={i}>⚠ {w}</div>
+            <div key={i}>⚠ {formatDiag(w, lang)}</div>
           ))}
         </div>
       )}
@@ -546,7 +561,7 @@ export default function App() {
           <StepsPanel steps={steps} focusY={focusY} onSelect={setFocusY} />
           <div className="flex-none rounded-xl border border-white/10 bg-neutral-950/85 p-3 backdrop-blur">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Материалы
+              {L.materials}
             </div>
             <ul className="max-h-40 space-y-1 overflow-y-auto text-sm">
               {materials(build).map(({ id, count }) => (

@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import type { Lang } from "../i18n";
 
 /** Structured provider failure from Rust; `kind` drives the UI hint. */
 export interface LlmError {
@@ -31,6 +32,8 @@ export interface ProviderSettings {
   baseUrl: string;
   model: string;
   apiKey: string;
+  /** UI language ("ru" | "en"); default "ru" on the Rust side. */
+  language: Lang;
 }
 
 export function getSettings(): Promise<ProviderSettings | null> {
@@ -70,7 +73,7 @@ export function streamCompletion(
     };
 
     const onAbort = () => {
-      finish(() => reject(new StreamError({ kind: CANCELLED, message: "Генерация остановлена" })));
+      finish(() => reject(new StreamError({ kind: CANCELLED, message: "Generation stopped" })));
       // Fire-and-forget: Rust drops the HTTP stream for this gen_id.
       if (genId !== undefined) invoke("cancel_generation", { genId }).catch(() => {});
     };

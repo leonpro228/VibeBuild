@@ -1,94 +1,97 @@
 <div align="center">
-  <img src="src/assets/app-icon.svg" width="128" alt="Иконка VibeBuild — пиксельная кирка">
+  <img src="src/assets/app-icon.svg" width="128" alt="VibeBuild icon — a pixel pickaxe">
 
   # VibeBuild
 
-  **Генерируйте майнкрафт постройки при помощи LLM.**
+  **Generate Minecraft builds with an LLM.**
 
-  Десктоп-приложение на Tauri 2: текстовый запрос уходит в LLM, модель возвращает постройку
-  послойными 2D-сетками, приложение валидирует ответ, рендерит постройку в 3D (Three.js)
-  и выдаёт пошаговую инструкцию с материалами для стройки в настоящем Minecraft.
+  **English** | [Русский](README.ru.md)
+
+  A Tauri 2 desktop app: you type a request, an LLM returns the build as
+  layer-by-layer 2D grids, the app validates the response, renders the build in 3D (Three.js)
+  and produces a step-by-step instruction with a bill of materials for building it in real Minecraft.
 
   ![Tauri 2](https://img.shields.io/badge/Tauri-2-24292f) ![React 19](https://img.shields.io/badge/React-19-24292f) ![Three.js](https://img.shields.io/badge/Three.js-0.186-24292f) ![Rust](https://img.shields.io/badge/Rust-reqwest%20%2B%20SSE-24292f)
 
-  <img src="screenshots/главный экран1.png" alt="скриншот главного экрана пнг">
-  <img src="screenshots/3dviewport.png" alt="скриншот 3д вьюпорта тоже пнг">
+  <img src="screenshots/главный экран1.png" alt="screenshot of the main screen, png">
+  <img src="screenshots/3dviewport.png" alt="screenshot of the 3D viewport, png">
 </div>
 
-## Возможности
+## Features
 
-- **Генерация по текстовому описанию** — «Замок 10×10», «Башня волшебника»… постройки до 24×24×24 блоков
-- **Стриминг** ответа в реальном времени + кнопка «Остановить» (соединение с провайдером закрывается сразу, токены не расходуются)
-- **Авто-ремонт**: если модель ответила невалидным JSON — приложение один раз автоматически переспрашивает её, передав конкретный список ошибок
-- **3D-вьюпорт**: небо с процедурными облаками, орбитальная камера, текстуры по граням (брёвна с торцами, зелёный верх травы), полупрозрачные блоки
-- **Пошаговая инструкция**: слой за слоем снизу вверх, 2D-чертёж каждого слоя из атласа, фокус слоя в 3D (текущий слой ярко, ниже — ghost, выше — скрыто), навигация ←→/Esc
-- **Материалы**: полный bill of materials постройки
-- **Сохранения**: постройки хранятся в каталоге конфигурации, меню «Мои постройки» (открыть/удалить); в браузерном dev-режиме — localStorage
-- **Bring-your-own API key**: OpenAI-совместимые провайдеры (OpenAI, DeepSeek, OpenRouter, vLLM, локальный Ollama) и Anthropic; ключ хранится локально и не уходит никуда, кроме вашего llm провайдера
+- **Text-to-build generation** — “A 10×10 castle”, “A wizard tower”… builds up to 24×24×24 blocks
+- **Real-time streaming** + a Stop button (the provider connection closes immediately, no tokens wasted)
+- **Auto-repair**: if the model replied with invalid JSON, the app automatically asks it once more, passing the exact list of errors
+- **3D viewport**: sky with procedural clouds, orbit camera, per-face textures (logs with end-grain tops, green grass top), translucent blocks
+- **Step-by-step instructions**: layer by layer, bottom-up, a 2D blueprint of each layer drawn from the atlas, layer focus in 3D (current layer is lit, below — ghost, above — hidden), ←→/Esc navigation
+- **Materials**: the full bill of materials of the build
+- **Two interface languages** (Russian / English) — switched in the provider settings dialog; the LLM prompt is always English
+- **Saved builds**: builds live in the OS config directory, a “My builds” menu (open/delete); localStorage in browser dev mode
+- **Bring-your-own API key**: OpenAI-compatible providers (OpenAI, DeepSeek, OpenRouter, vLLM, local Ollama) and Anthropic; the key is stored locally and never leaves your machine except to your LLM provider
 
-## Как это работает
+## How it works
 
 ```mermaid
 flowchart TD
-    A["Текстовый запрос<br/>«Замок 10×10»"] --> B["Frontend: system + user промпт<br/>(палитра, правила, формат JSON)"]
-    B --> C["Rust: reqwest → провайдер<br/>SSE-стриминг"]
-    C -->|"Channel: токены"| D["Frontend: накопление ответа"]
-    D --> E["extractJson → Zod → нормализация<br/>→ семантическая валидация"]
-    E -->|"ошибки"| F["Авто-ремонт:<br/>1 повторный запрос со списком ошибок"]
+    A["Text request<br/>“A 10×10 castle”"] --> B["Frontend: system + user prompt<br/>(palette, rules, JSON format)"]
+    B --> C["Rust: reqwest → provider<br/>SSE streaming"]
+    C -->|"Channel: tokens"| D["Frontend: response accumulation"]
+    D --> E["extractJson → Zod → normalization<br/>→ semantic validation"]
+    E -->|"errors"| F["Auto-repair:<br/>1 retry with the error list"]
     F --> E
-    E -->|"успех"| G["Каноническая модель Build"]
-    G --> H["3D-рендер"]
-    G --> I["Пошаговая инструкция"]
-    G --> J["Материалы"]
+    E -->|"success"| G["Canonical Build model"]
+    G --> H["3D render"]
+    G --> I["Step-by-step instruction"]
+    G --> J["Materials"]
 ```
 
 ---
 
-## Взаимодействие с LLM
+## Talking to the LLM
 
-### Что программа отправляет провайдеру
+### What the app sends to the provider
 
-Запрос состоит из двух сообщений — `system` и `user`.
+The request consists of two messages — `system` and `user`.
 
-**System prompt** задаёт роль и жёсткий формат:
+**The system prompt** is always English (models follow it most reliably) and sets the role plus a strict format:
 
-> Ты — генератор построек для Minecraft. Ты возвращаешь ТОЛЬКО JSON-объект без пояснений, без markdown-разметки.
+> You are a Minecraft build generator. You return ONLY a JSON object — no explanations, no markdown.
 
-и включает четыре блока:
+It includes four blocks:
 
-1. **Формат ответа** — JSON с массивом слоёв: `{ "name": "...", "layers": [{ "y": 0, "rows": [".....", "..AAA"] }] }`.
-2. **Девять правил**:
-   - слой — горизонтальный срез на высоте `y`; `y` начинается с 0 (земля) и растёт вверх **без пропусков**;
-   - строка = ряд по глубине (z), символ = блок по ширине (x), строка 0 — северная сторона;
-   - один символ = один блок, `.` = воздух;
-   - использовать **только символы палитры**;
-   - все строки слоя одной длины, все слои — одинаковые ширина и глубина;
-   - лимит 24×24×24, оптимум 8–16 блоков по ширине/глубине;
-   - нижний слой — фундамент/пол; каждый блок опирается на блок под ним (никаких «висящих» блоков);
-   - делать постройку полой внутри, где уместно, оставлять проёмы дверей и окон;
-   - художественный вкус: сочетать материалы, добавлять карнизы, колонны, крыши, окна.
-3. **Палитра** — фиксированная таблица `символ = блок` (73 ванильных блока-куба: доски, брёвна, камни/кирпичи, стекло, шерсть, бетон и т.д.). Присвоение символов стабильно и определяется порядком whitelist в `scripts/palette-config.mjs`:
+1. **Response format** — JSON with an array of layers: `{ "name": "...", "layers": [{ "y": 0, "rows": [".....", "..AAA"] }] }`.
+2. **Nine rules**:
+   - a layer is a horizontal slice at height `y`; `y` starts at 0 (the ground) and grows upward **with no gaps**;
+   - a string is a row along depth (z), a character is a block along width (x), row 0 is the north side;
+   - one character = one block, `.` = air;
+   - use **only palette characters**;
+   - all rows of a layer are the same length, all layers have the same width and depth;
+   - the 24×24×24 limit, 8–16 blocks in width/depth is optimal;
+   - the bottom layer is the foundation/floor; every block rests on the block below it (no “floating” blocks);
+   - make the build hollow inside where appropriate, leave door and window openings;
+   - artistic taste: combine materials, add cornices, columns, roofs, windows.
+3. **The palette** — a fixed `character = block` table (73 vanilla cube blocks: planks, logs, stones/bricks, glass, wool, concrete, etc.). Character assignment is stable and defined by the whitelist order in `scripts/palette-config.mjs`:
    ```text
    A = stone        B = cobblestone   C = mossy_cobblestone
    D = stone_bricks …
-   . = воздух
+   . = air
    ```
-4. **Few-shot пример** — полный корректный JSON демо-домика 5×5. Пример генерируется из той же фикстуры, которой соответствует рендер (`src/lib/build/demo.ts`), поэтому промпт не может рассинхронизироваться с кодом.
+4. **A few-shot example** — the full correct JSON of the demo 5×5 house. The example is generated from the same fixture the renderer draws (`src/lib/build/demo.ts`), so the prompt cannot desync from the code.
 
-**User prompt** — запрос пользователя плюс напоминание о лимите:
+**The user prompt** — the user's request plus a reminder about the limit:
 
 ```text
-Запрос пользователя: «Замок 10×10»
-Сгенерируй постройку по формату из инструкции. Помни про лимит 24×24×24.
+User request: «A 10×10 castle»
+Generate a build following the format from the instructions. Remember the 24×24×24 limit.
 ```
 
-### Что программа ожидает получить
+### What the app expects to receive
 
-Модель обязана вернуть **только JSON-объект**. Ожидаемая форма:
+The model must return **a JSON object only**. Expected shape:
 
 ```json
 {
-  "name": "Маленький домик",
+  "name": "Small house",
   "layers": [
     { "y": 0, "rows": ["AAAAA", "ABBBA", "ABBBA", "ABBBA", "AAAAA"] },
     { "y": 1, "rows": ["AAAAA", "A...A", "A...A", "A...A", "AAAAA"] },
@@ -97,139 +100,140 @@ flowchart TD
 }
 ```
 
-- `y` — высота слоя, начиная с 0, без лакун;
-- каждая строка в `rows` — горизонтальный ряд слоя: строка = z (глубина), позиция в строке = x (ширина), строка 0 = север;
-- символы — строго из палитры, `.` — воздух;
-- поле `size` программа вообще не просит и не доверяет заявленным размерам — она их вычисляет (см. ниже).
+- `y` — the layer height, starting at 0, no gaps;
+- each string in `rows` is a horizontal row of the layer: string = z (depth), position in the string = x (width), row 0 = north;
+- characters are strictly from the palette, `.` is air;
+- the app does not even ask for the `size` field and does not trust declared sizes — it computes them (see below).
 
-**Почему палитра-коды, а не полные имена блоков?** Компактность: сетки из односимвольных кодов в 3–5 раз короче полных имён — это напрямую снижает риск упереться в лимит вывода модели на постройках 24³. И главное — выдумать несуществующий блок становится почти невозможно: любой символ вне словаря ловится валидатором.
+**Why palette codes instead of full block names?** Compactness: grids of single-character codes are 3–5× shorter than full names — this directly reduces the risk of hitting the model's output limit on 24³ builds. And most importantly, inventing a non-existent block becomes nearly impossible: any character outside the dictionary is caught by the validator.
 
 ---
 
-## Как обрабатывается ответ: полный пайплайн
+## How the response is processed: the full pipeline
 
-Путь ответа от байтов SSE до 3D-сцены. Логика сознательно разложена на чистые функции с юнит-тестами (`yarn test`).
+The response's path from SSE bytes to the 3D scene. The logic is deliberately split into pure functions with unit tests (`yarn test`).
 
-### 1. Стриминг (Rust → webview)
+### 1. Streaming (Rust → webview)
 
-Запрос к провайдеру выполняет **Rust**. OpenAI-совместимые провайдеры — `POST /chat/completions` с `stream: true` (дельта берётся из `choices[0].delta.content`), Anthropic — `POST /v1/messages` с `stream: true` (события `content_block_delta` / `text_delta`). Токены летят в webview через `tauri::ipc::Channel`; UI показывает счётчик символов. Генерацию можно остановить: идентификатор регистрируется в реестре отмены, дроп стрима закрывает HTTP-соединение.
+The provider request is performed by **Rust**. OpenAI-compatible providers — `POST /chat/completions` with `stream: true` (the delta comes from `choices[0].delta.content`), Anthropic — `POST /v1/messages` with `stream: true` (`content_block_delta` / `text_delta` events). Tokens travel to the webview via a `tauri::ipc::Channel`; the UI shows a character counter. Generation can be stopped: the id is registered in a cancellation registry, dropping the stream closes the HTTP connection.
 
-Ошибки приходят структурой `{ kind, message }`: `network` (нет соединения/таймаут), `http` (статус + URL) или `protocol` (битый SSE-кадр). По `kind` UI подбирает человеческую подсказку («проверьте ключ и base URL в настройках» для 401/403 и т.п.).
+Errors arrive as a `{ kind, message }` structure: `network` (no connection/timeout), `http` (status + URL) or `protocol` (malformed SSE frame). Based on `kind`, the UI picks a plain-language hint (“check the key and base URL in Settings” for 401/403, etc.).
 
-### 2. Извлечение JSON — `extractJson()`
+### 2. JSON extraction — `extractJson()`
 
-Модели любят оборачивать ответ в ```json-заборы или добавлять комментарии вокруг. Извлекатель вырезает подстроку **от первого `{` до последнего `}`** и терпит любые заборы/болтовню вокруг. Если `{`…`}` не найдено — ошибка «В ответе модели не найден JSON-объект».
+Models love wrapping the response in ```json fences or adding chatter around it. The extractor cuts the substring **from the first `{` to the last `}`** and tolerates any fences/chatter around. If no `{`…`}` is found — the error “No JSON object found in the model response”.
 
-### 3. Схема (Zod)
+### 3. Schema (Zod)
 
 ```ts
 { name?: string, size?: { width, height, depth }, layers: [{ y: int ≥ 0, rows?: string[], grid?: string[][] }] }
 ```
 
-- `name` и `size` опциональны — отсутствие названия лечится дефолтом, отсутствие `size` не мешает;
-- `rows` — массив **строк-кодов** (основной формат), `grid` — массив массивов ячеек (второй допустимый формат, им же загружаются сохранённые постройки).
+- `name` and `size` are optional — a missing name is cured by a default, a missing `size` does not hurt;
+- `rows` — an array of **code strings** (the primary format), `grid` — an array of arrays of cells (the second accepted format; saved builds load through it too).
 
-### 4. Нормализация ячеек
+### 4. Cell normalization
 
-Каждая ячейка приводится к id блока:
+Every cell is reduced to a block id:
 
-- один символ → код палитры (`A` → `stone`);
-- длинная строка → **имя блока**: `trim()`, нижний регистр, пробелы → `_` (`" Oak Planks "` → `oak_planks`); `air` — воздух;
-- пустая ячейка → ошибка с точными координатами (слой, строка, позиция).
+- one character → a palette code (`A` → `stone`);
+- a longer string → a **block name**: `trim()`, lowercase, spaces → `_` (`" Oak Planks "` → `oak_planks`); `air` is air;
+- an empty cell → an error with exact coordinates (layer, row, position).
 
-Неизвестный код или неизвестный блок → ошибка вида `Слой y=3, строка 2, позиция 7: неизвестный символ "Ω" — используй только символы из палитры`.
+An unknown code or an unknown block → an error like `Layer y=3, row 2, position 7: unknown symbol "Ω" — use only palette symbols or "." for air`.
 
-### 5. Геометрия вычисляется из грид
+### 5. Geometry is computed from the grids
 
-Размеры постройки **выводятся из данных, а не из слов модели**:
+The build's dimensions are **derived from the data, not from the model's words**:
 
-- `width` / `depth` — максимумы длин строк по всем слоям (короткие строки дополняются воздухом + warning);
-- `height` = максимальный `y` + 1;
-- пропущенные слои `y` (лакуны) заполняются воздухом + warning;
-- если модель заявила `size`, не совпавший с фактическим — warning «используется фактический»;
-- превышение 24³ — warning, не ошибка.
+- `width` / `depth` — the maxima of row lengths across all layers (short rows are padded with air + a warning);
+- `height` = the maximum `y` + 1;
+- missing `y` layers (gaps) are filled with air + a warning;
+- if the model declared a `size` that does not match the actual one — a warning (“using the actual one”);
+- exceeding 24³ — a warning, not an error.
 
-Так «LLM, которая уверенно заявила 10×10, но нарисовала 14×9», не ломает рендер — а честно рапортуется пользователю.
+This way an “LLM that confidently declared 10×10 but drew 14×9” does not break the render — and is honestly reported to the user.
 
-### 6. Авто-ремонт — один повторный запрос
+### 6. Auto-repair — one retry
 
-Если после первой проверки есть ошибки, приложение **само** отправляет repair-запрос: той же модели возвращают список ошибок с координатами и обрезанный до 4000 символов предыдущий ответ:
+If the first check produced errors, the app **itself** sends a repair request: the same model receives the list of errors with coordinates and the previous response truncated to 4000 characters:
 
 ```text
-Твой предыдущий ответ содержал ошибки. Исправь их и верни исправленный JSON целиком.
-Ошибки:
-1. Слой y=2, строка 4: неизвестный символ "Ω"…
-Предыдущий ответ:
+Your previous response contained errors. Fix them and return the corrected JSON in full.
+Errors:
+1. Layer y=2, row 4: unknown symbol "Ω"…
+Previous response:
 { … }
 ```
 
-Второй фейл подряд — экран ошибки (текст + подсказки + «Скопировать» + «Попробовать снова»). Успех — каноническая модель.
+A second failure in a row — the error screen (text + hints + “Copy” + “Try again”). Success — the canonical model.
 
-### 7. Каноническая модель → рендер, инструкция, материалы
+### 7. Canonical model → render, instruction, materials
 
 ```ts
 type Build = {
   name: string;
   size: { width: number; height: number; depth: number }; // width=X, height=Y, depth=Z
-  layers: { y: number; rows: BlockId[][] }[];             // rows = Z, колонки = X, строка 0 = север
+  layers: { y: number; rows: BlockId[][] }[];             // rows = Z, columns = X, row 0 = north
 };
 ```
 
-Это единый источник истины: из него строится merged BufferGeometry с face culling и per-face UV из атласа (кулинг соседей «внутри» постройки; в фокус-режиме слои выше фокуса считаются воздухом, иначе срез «проедал» грани), пошаговая инструкция (шаг = непустой слой снизу вверх, шаг-превью рисуется тайлами юга из атласа) и bill of materials.
+This is the single source of truth: it feeds the merged BufferGeometry with face culling and per-face UVs from the atlas (neighbors “inside” the build are culled; in focus mode the layers above the focus are treated as air, otherwise the slice would “eat” the faces), the step-by-step instruction (a step = a non-empty layer, bottom-up; the step preview is drawn with south tiles from the atlas) and the bill of materials.
 
 ---
 
-## Провайдеры и ключи
+## Providers and keys
 
 | | |
 |---|---|
-| OpenAI-совместимые | OpenAI, DeepSeek, OpenRouter, vLLM, Ollama — один клиент, настраиваемый base URL |
-| Anthropic | отдельный адаптер (`/v1/messages`) |
-| Ключ | вводится в ⚙, хранится в `settings.json` каталога конфигурации ОС с правами 0600; запросы идут из Rust-процесса |
-| Локально | Ollama — base URL `http://localhost:11434/v1`, ключ можно оставить пустым |
+| OpenAI-compatible | OpenAI, DeepSeek, OpenRouter, vLLM, Ollama — one client, configurable base URL |
+| Anthropic | a separate adapter (`/v1/messages`) |
+| Key | entered in ⚙, stored in the OS config directory's `settings.json` with 0600 permissions; requests go from the Rust process |
+| Local | Ollama — base URL `http://localhost:11434/v1`, the key can be left empty |
 
-## Разработка
+## Development
 
-Требования: Node 24 (скрипты работают на type-stripping), Rust (stable), yarn 1.22.
+Requirements: Node 24 (the scripts run on type-stripping), Rust (stable), yarn 1.22.
 
 ```bash
 yarn install
-node scripts/fetch-textures.mjs   # скачает 82 PNG-текстуры из PrismarineJS/minecraft-assets (26.1) в json assets/blocks/
-node scripts/build-palette.mjs    # соберёт src/assets/palette.json + atlas.png
-yarn tauri dev                    # запуск приложения (invoke работает только внутри Tauri)
+node scripts/fetch-textures.mjs   # downloads 82 PNG textures from PrismarineJS/minecraft-assets (26.1) into json assets/blocks/
+node scripts/build-palette.mjs    # builds src/assets/palette.json + atlas.png
+yarn tauri dev                    # run the app (invoke only works inside Tauri)
 ```
 
-Остальные команды:
+Other commands:
 
-| Команда | Что делает |
+| Command | What it does |
 |---|---|
-| `yarn test` | юнит-тесты валидации и инструкции (17 кейсов) |
-| `yarn build` | типы + продакшен-сборка web-части |
-| `node scripts/make-icon.mjs` | перегенерация иконки (SVG + PNG-источник) |
-| `yarn tauri icon src/assets/app-icon.png` | перегенерация набора иконок ОС из источника |
-| `node scripts/check-winding.mjs` / `check-geometry.mjs` | регресс-чеки рендера (winding, куллинг, UV, срез фокус-слоя) |
+| `yarn test` | unit tests of validation and instructions (18 cases) |
+| `yarn build` | types + production build of the web part |
+| `node scripts/make-icon.mjs` | regenerate the icon (SVG + PNG source) |
+| `yarn tauri icon src/assets/app-icon.png` | regenerate the OS icon set from the source |
+| `node scripts/check-winding.mjs` / `check-geometry.mjs` | render regression checks (winding, culling, UVs, focus-layer slice) |
 
-Без настроенного провайдера (или в обычном браузере без Tauri) приложение работает в **демо-режиме**: рисует фикстуру-домик; `?demo` в URL — мгновенно.
+Without a configured provider (or in a plain browser without Tauri) the app runs in **demo mode**: it draws the fixture house; `?demo` in the URL — instantly.
 
-## Структура проекта
+## Project structure
 
 <details>
-<summary>Дерево (кликни)</summary>
+<summary>Tree (click)</summary>
 
 ```
 src/
-  lib/palette/      palette.ts (каталог блоков + faceTile), prompt.ts (system/user/repair)
-  lib/build/        types.ts (Build), validate.ts (пайплайн выше), instructions.ts, demo.ts
-  lib/render/       faceTable.ts (6 граней), voxelGeometry.ts (per-face UV, куллинг), VoxelScene.ts
-  lib/llm/          client.ts (invoke + Channel, типизированные ошибки)
-  lib/storage.ts    сохранения построек (Tauri config dir / localStorage)
+  lib/palette/      palette.ts (block catalog + faceTile), prompt.ts (system/user/repair, English)
+  lib/build/        types.ts (Build), validate.ts (the pipeline above), instructions.ts, demo.ts
+  lib/render/       faceTable.ts (6 faces), voxelGeometry.ts (per-face UV, culling), VoxelScene.ts
+  lib/llm/          client.ts (invoke + Channel, typed errors)
+  lib/storage.ts    saved builds (Tauri config dir / localStorage)
+  lib/i18n.ts       ru/en dictionaries + language store; useLang.ts — React hook
   components/       Viewer3D, StepsPanel, LayerPreview, SettingsDialog, SavedBuildsDialog
-  App.tsx           фазы idle|generating|ready|error, generate() с авто-ремонтом
+  App.tsx           phases idle|generating|ready|error, generate() with auto-repair
 src-tauri/src/
-  llm.rs            стриминг SSE, реестр отмены
-  settings.rs       хранение ключа (0600)
-  builds.rs         сохранённые постройки
-scripts/            палитра/ассеты/иконка/чеки
+  llm.rs            SSE streaming, cancellation registry
+  settings.rs       settings storage incl. UI language (0600)
+  builds.rs         saved builds
+scripts/            palette/assets/icon/checks
 tests/              node --test: validation + instructions
 ```
 

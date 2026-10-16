@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import atlasUrl from "../assets/atlas.png";
 import { ATLAS, INFO_BY_ID, faceTile } from "../lib/palette/palette";
+import { useLang } from "../lib/useLang";
 
 /** Module-level atlas image cache (shared by all previews). */
 let atlasImage: HTMLImageElement | null = null;
@@ -14,7 +15,7 @@ function loadAtlas(): Promise<HTMLImageElement> {
       atlasImage = img;
       resolve(img);
     };
-    img.onerror = () => reject(new Error("не удалось загрузить атлас"));
+    img.onerror = () => reject(new Error("failed to load the atlas"));
     img.src = atlasUrl;
   });
   return atlasPromise;
@@ -37,6 +38,7 @@ export function LayerPreview({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const { L } = useLang();
 
   const width = Math.max(...grid.map((r) => r.length), 1);
   const depth = grid.length;
@@ -124,7 +126,7 @@ export function LayerPreview({
         onMouseLeave={() => setHovered(null)}
       />
       <div className="h-4 text-[10px] leading-4 text-neutral-500">
-        {hovered ?? (hint ? "север — сверху" : "")}
+        {hovered ?? (hint ? L.northOnTop : "")}
       </div>
     </div>
   );

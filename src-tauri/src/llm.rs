@@ -116,13 +116,13 @@ async fn stream_openai(
         // requests hit the wrong host (region blocks, weird 4xx bodies…).
         return Err(llm_err(
             "http",
-            format!("HTTP {status} от {url}: {}", trim_body(response).await),
+            format!("HTTP {status} from {url}: {}", trim_body(response).await),
         ));
     }
 
     consume_sse(response, |payload| {
         let v: serde_json::Value = serde_json::from_str(payload)
-            .map_err(|e| llm_err("protocol", format!("битый SSE-кадр от провайдера: {e}")))?;
+            .map_err(|e| llm_err("protocol", format!("malformed SSE frame from the provider: {e}")))?;
         if let Some(text) = v["choices"][0]["delta"]["content"].as_str() {
             if !text.is_empty() {
                 let _ = on_event.send(LlmEvent::Token(text.to_string()));
@@ -168,13 +168,13 @@ async fn stream_anthropic(
     if !status.is_success() {
         return Err(llm_err(
             "http",
-            format!("HTTP {status} от {url}: {}", trim_body(response).await),
+            format!("HTTP {status} from {url}: {}", trim_body(response).await),
         ));
     }
 
     consume_sse(response, |payload| {
         let v: serde_json::Value = serde_json::from_str(payload)
-            .map_err(|e| llm_err("protocol", format!("битый SSE-кадр от провайдера: {e}")))?;
+            .map_err(|e| llm_err("protocol", format!("malformed SSE frame from the provider: {e}")))?;
         if v["type"] == "content_block_delta" && v["delta"]["type"] == "text_delta" {
             if let Some(text) = v["delta"]["text"].as_str() {
                 if !text.is_empty() {
@@ -194,7 +194,7 @@ fn build_client(settings: &Settings) -> Result<reqwest::Client, LlmError> {
     }
     builder
         .build()
-        .map_err(|e| llm_err("network", format!("не удалось создать HTTP-клиент: {e}")))
+        .map_err(|e| llm_err("network", format!("failed to create the HTTP client: {e}")))
 }
 
 /// Overall request cap; streaming responses need a generous one.
@@ -204,11 +204,11 @@ fn stream_timeout(_settings: &Settings) -> Option<std::time::Duration> {
 
 fn http_error(e: reqwest::Error) -> LlmError {
     if e.is_connect() {
-        llm_err("network", format!("нет соединения с провайдером: {e}"))
+        llm_err("network", format!("no connection to the provider: {e}"))
     } else if e.is_timeout() {
-        llm_err("network", format!("таймаут запроса: {e}"))
+        llm_err("network", format!("request timed out: {e}"))
     } else {
-        llm_err("network", format!("ошибка запроса: {e}"))
+        llm_err("network", format!("request failed: {e}"))
     }
 }
 
@@ -261,14 +261,14 @@ pub async fn generate_build(
     registry: tauri::State<'_, CancelRegistry>,
 ) -> Result<(), String> {
     let settings = crate::settings::load(&app)?
-        .ok_or("Провайдер не настроен. Откройте настройки и укажите провайдера и API-ключ.")?;
+        .ok_or("Provider is not configured. Open settings and set the provider and API key.")?;
     let (abortable, handle) = abortable(stream_completion(&settings, &system, &user, on_event));
     registry.register(gen_id, handle);
     let result = abortable.await;
     registry.unregister(gen_id);
     match result {
         Ok(inner) => inner.map_err(|e| e.message),
-        Err(Aborted) => Err("Генерация остановлена".to_string()),
+        Err(Aborted) => Err("Generation stopped".to_string()),
     }
 }
 
