@@ -15,6 +15,7 @@
 
   <img src="screenshots/главный экран1.png" alt="скриншот главного экрана пнг">
   <img src="screenshots/3dviewport.png" alt="скриншот 3д вьюпорта тоже пнг">
+  больше примеров в файле steve_head.md
 </div>
 
 ## Возможности

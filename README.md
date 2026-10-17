@@ -15,6 +15,7 @@
 
   <img src="screenshots/главный экран1.png" alt="screenshot of the main screen, png">
   <img src="screenshots/3dviewport.png" alt="screenshot of the 3D viewport, png">
+  yall can find more examples in steve_head.md file
 </div>
 
 ## Features
