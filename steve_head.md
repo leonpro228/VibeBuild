@@ -15,5 +15,3 @@
 **Muse spark 1.3 contributor**
 <img src='screenshots/examples/голова стива мьюз.png'>
 ---
-**Bonus**
-<img src='screenshots/examples/ой.png'>
