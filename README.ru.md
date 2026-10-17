@@ -241,4 +241,3 @@ tests/              node --test: validation + instructions
 ```
 
 </details>
-ой
