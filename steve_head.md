@@ -10,7 +10,7 @@
 <img src='screenshots/examples/голова стива квен 3.7 флеш.png'>
 ---
 **Xiaomi mimo v2.5**
-<img src='screenshots/examples/голоова стива мимо в2-5.png'>
+<img src='screenshots/examples/голова стива мимо в2-5.png'>
 ---
 **Muse spark 1.3 contributor**
 <img src='screenshots/examples/голова стива мьюз.png'>
