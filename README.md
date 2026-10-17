@@ -47,7 +47,7 @@ flowchart TD
 
 ---
 
-## Talking to the LLM
+## Interaction with LLM
 
 ### What the app sends to the provider
 
