@@ -1,7 +1,7 @@
 **I asked some chip models to build a steve head**
 ---
 **Gpt 6 luna**
-<img src='screenshots/examples/голова стива гпт6 луна.png'>
+<img src='screenshots/examples/голова стива гпт 6 луна.png'>
 ---
 **Deepseek v4.1-flash**
 <img src='screenshots/examples/голова стива дипсик.png'>
